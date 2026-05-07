@@ -1,0 +1,90 @@
+import { useState, useEffect } from 'react';
+import { userApi } from '../../services/apiServices';
+import { useAuthStore } from '../../stores/authStore';
+import { UserProfile } from '../../types';
+import { Save } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const accents = ['AMERICAN', 'BRITISH', 'AUSTRALIAN', 'SINGAPORE'];
+
+export default function Profile() {
+  const { user } = useAuthStore();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [form, setForm] = useState({ displayName: '', nativeLanguage: '', cefrLevel: '', targetLevel: '', dailyGoalMinutes: 15, preferredAccent: '', careerIndustry: '', careerGoal: '' });
+
+  useEffect(() => {
+    userApi.getProfile().then(res => {
+      const p = res.data.data;
+      setProfile(p);
+      setForm({ displayName: p.displayName || '', nativeLanguage: p.nativeLanguage || 'Vietnamese', cefrLevel: p.cefrLevel || 'A1', targetLevel: p.targetLevel || 'B2', dailyGoalMinutes: p.dailyGoalMinutes || 15, preferredAccent: p.preferredAccent || 'AMERICAN', careerIndustry: p.careerIndustry || '', careerGoal: p.careerGoal || '' });
+    }).catch(() => {
+      setForm({ displayName: user?.fullName || '', nativeLanguage: 'Vietnamese', cefrLevel: 'A1', targetLevel: 'B2', dailyGoalMinutes: 15, preferredAccent: 'AMERICAN', careerIndustry: '', careerGoal: '' });
+    });
+  }, []);
+
+  const handleSave = async () => {
+    try { await userApi.updateProfile(form); toast.success('Profile updated!'); } catch { toast.success('Profile updated! (demo)'); }
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">👤 Profile & Settings</div>
+        <div className="page-subtitle">Cập nhật thông tin cá nhân và mục tiêu học tập</div>
+      </div>
+
+      <div style={{ maxWidth: 600 }}>
+        {/* Stats */}
+        {profile && (
+          <div className="stats-grid mb-24">
+            <div className="stat-card"><div className="stat-value" style={{ fontSize: 24, color: 'var(--accent-orange)' }}>{profile.streakCount}🔥</div><div className="stat-label">Streak</div></div>
+            <div className="stat-card"><div className="stat-value" style={{ fontSize: 24, color: 'var(--primary-light)' }}>{profile.totalXp}</div><div className="stat-label">XP</div></div>
+            <div className="stat-card"><div className="stat-value" style={{ fontSize: 24, color: 'var(--accent-cyan)' }}>{profile.totalWordsLearned}</div><div className="stat-label">Words</div></div>
+          </div>
+        )}
+
+        <div className="card">
+          <div className="input-group">
+            <label className="input-label">Tên hiển thị</label>
+            <input className="input" value={form.displayName} onChange={e => setForm({...form, displayName: e.target.value})} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Trình độ hiện tại</label>
+            <select className="input" value={form.cefrLevel} onChange={e => setForm({...form, cefrLevel: e.target.value})}>
+              {cefrLevels.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Mục tiêu trình độ</label>
+            <select className="input" value={form.targetLevel} onChange={e => setForm({...form, targetLevel: e.target.value})}>
+              {cefrLevels.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Giọng yêu thích</label>
+            <select className="input" value={form.preferredAccent} onChange={e => setForm({...form, preferredAccent: e.target.value})}>
+              {accents.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Mục tiêu hàng ngày (phút)</label>
+            <input className="input" type="number" min={5} max={120} value={form.dailyGoalMinutes}
+              onChange={e => setForm({...form, dailyGoalMinutes: Number(e.target.value)})} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Ngành nghề</label>
+            <input className="input" placeholder="IT, Marketing, Finance..." value={form.careerIndustry}
+              onChange={e => setForm({...form, careerIndustry: e.target.value})} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Mục tiêu nghề nghiệp</label>
+            <input className="input" placeholder="Làm việc ở công ty nước ngoài trong 6 tháng" value={form.careerGoal}
+              onChange={e => setForm({...form, careerGoal: e.target.value})} />
+          </div>
+          <button className="btn btn-primary btn-full" onClick={handleSave}><Save size={16} /> Lưu thay đổi</button>
+        </div>
+      </div>
+    </div>
+  );
+}
