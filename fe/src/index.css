@@ -99,6 +99,7 @@ a:hover { color: var(--primary); }
   top: 0; left: 0; bottom: 0;
   z-index: 100;
   transition: var(--transition);
+  overflow-y: auto;
 }
 
 .sidebar-logo {

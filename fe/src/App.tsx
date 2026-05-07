@@ -10,8 +10,17 @@ import ScenarioList from './pages/roleplay/ScenarioList';
 import RoleplayChat from './pages/roleplay/RoleplayChat';
 import CareerSetup from './pages/career/CareerSetup';
 import VocabularyMap from './pages/career/VocabularyMap';
+import DailyLesson from './pages/career/DailyLesson';
 import AccentCoach from './pages/accent/AccentCoach';
 import ContentFeed from './pages/content/ContentFeed';
+import ContentPlayer from './pages/content/ContentPlayer';
+import MyVocabulary from './pages/content/MyVocabulary';
+import MyNotes from './pages/content/MyNotes';
+import MyTranslations from './pages/content/MyTranslations';
+import MyTests from './pages/content/MyTests';
+import CodeCompiler from './pages/content/CodeCompiler';
+import LearningPath from './pages/content/LearningPath';
+import SpacedRepetition from './pages/content/SpacedRepetition';
 import RoomList from './pages/speaking/RoomList';
 import SpeakingRoomPage from './pages/speaking/SpeakingRoom';
 import DNAReport from './pages/performance/DNAReport';
@@ -22,6 +31,7 @@ import Challenges from './pages/user/Challenges';
 import Achievements from './pages/user/Achievements';
 import Planner from './pages/user/Planner';
 import Community from './pages/user/Community';
+import CommunityClub from './pages/user/CommunityClub';
 import Journal from './pages/user/Journal';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -67,8 +77,17 @@ export default function App() {
           <Route path="roleplay/:id" element={<RoleplayChat />} />
           <Route path="career" element={<CareerSetup />} />
           <Route path="career/:id/vocab" element={<VocabularyMap />} />
+          <Route path="career/:id/lesson" element={<DailyLesson />} />
           <Route path="accent" element={<AccentCoach />} />
           <Route path="content" element={<ContentFeed />} />
+          <Route path="content/:id" element={<ContentPlayer />} />
+          <Route path="content/my-vocabulary" element={<MyVocabulary />} />
+          <Route path="content/srs" element={<SpacedRepetition />} />
+          <Route path="content/my-notes" element={<MyNotes />} />
+          <Route path="content/my-translations" element={<MyTranslations />} />
+          <Route path="content/my-tests" element={<MyTests />} />
+          <Route path="content/compiler" element={<CodeCompiler />} />
+          <Route path="content/learning-path" element={<LearningPath />} />
           <Route path="speaking" element={<RoomList />} />
           <Route path="speaking/:id" element={<SpeakingRoomPage />} />
           <Route path="performance" element={<DNAReport />} />
@@ -76,6 +95,7 @@ export default function App() {
           <Route path="achievements" element={<Achievements />} />
           <Route path="planner" element={<Planner />} />
           <Route path="community" element={<Community />} />
+          <Route path="community/clubs/:id" element={<CommunityClub />} />
           <Route path="journal" element={<Journal />} />
           <Route path="profile" element={<Profile />} />
           <Route path="payment" element={<Billing />} />

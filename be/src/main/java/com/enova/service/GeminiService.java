@@ -82,6 +82,19 @@ public class GeminiService {
                 return generateJson(prompt, 0.4, 384);
         }
 
+        public Optional<JsonNode> generateContentQuizzes(String title, String summary) {
+                String prompt = "Generate 5 multiple choice questions about this content:\nTitle: " + title + "\nSummary: " + summary + "\n\n" +
+                                "Return JSON array with format: [{\"question\": \"...\", \"optionA\": \"...\", \"optionB\": \"...\", " +
+                                "\"optionC\": \"...\", \"optionD\": \"...\", \"correctAnswer\": \"A\", \"explanation\": \"...\"}]";
+                return generateJson(prompt, 0.4, 512);
+        }
+
+        public String translateText(String text, String sourceLanguage, String targetLanguage) {
+                String prompt = "Translate the following text from " + sourceLanguage + " to " + targetLanguage + ". " +
+                                "Only return the translation, no explanations:\n\n" + text;
+                return generateText(prompt, 0.3, 512).orElse(text);
+        }
+
     private Optional<String> generateText(String prompt, double temperature, int maxTokens) {
         if (apiKey == null || apiKey.isBlank()) return Optional.empty();
 
@@ -132,8 +145,14 @@ public class GeminiService {
                 if (raw.isEmpty()) return Optional.empty();
                 try {
                         String text = raw.get().trim();
-                        int start = text.indexOf('{');
-                        int end = text.lastIndexOf('}');
+                        int startObj = text.indexOf('{');
+                        int startArr = text.indexOf('[');
+                        int endObj = text.lastIndexOf('}');
+                        int endArr = text.lastIndexOf(']');
+                        
+                        int start = (startObj >= 0 && startArr >= 0) ? Math.min(startObj, startArr) : Math.max(startObj, startArr);
+                        int end = (endObj >= 0 && endArr >= 0) ? Math.max(endObj, endArr) : Math.max(endObj, endArr);
+
                         if (start >= 0 && end > start) {
                                 text = text.substring(start, end + 1);
                         }

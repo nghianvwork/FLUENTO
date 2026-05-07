@@ -98,6 +98,21 @@ INSERT IGNORE INTO speaking_rooms (id, title, topic, max_participants, difficult
 (5, 'Interview Prep: Mock Interviews', 'Practice answering common interview questions with peers', 3, 'INTERMEDIATE', 'DISCUSSION', 'ACTIVE', NOW());
 
 -- ===================================================
+-- COMMUNITY CLUBS
+-- ===================================================
+INSERT IGNORE INTO community_clubs (id, name, focus, level, created_at) VALUES
+(1, 'Tech Builders Club', 'Product + engineering', 'B1-B2', NOW()),
+(2, 'Marketing Storytellers', 'Narrative + pitch', 'A2-B1', NOW()),
+(3, 'Finance Talkroom', 'Business English', 'B2-C1', NOW());
+
+-- ===================================================
+-- COMMUNITY EVENTS
+-- ===================================================
+INSERT IGNORE INTO community_events (id, title, time_label, host, capacity, created_at) VALUES
+(1, 'Global Demo Day', 'Thu 20:00', 'Coach Anna', 40, NOW()),
+(2, 'Interview Challenge', 'Sat 10:00', 'AI Moderator', 30, NOW());
+
+-- ===================================================
 -- ACHIEVEMENTS DEFINITIONS
 -- ===================================================
 INSERT IGNORE INTO achievement_definitions (id, achievement_key, title, description, icon, xp_reward, criteria_json, created_at) VALUES
@@ -109,3 +124,170 @@ INSERT IGNORE INTO achievement_definitions (id, achievement_key, title, descript
 (6, 'SOCIAL_BUTTERFLY', 'Social Butterfly', 'Join 10 speaking rooms', '🦋', 100, '{"type": "room_count", "target": 10}', NOW()),
 (7, 'CAREER_COMPLETE', 'Career Ready', 'Complete a full career path', '🏆', 1000, '{"type": "career_complete", "target": 1}', NOW()),
 (8, 'FIRST_REPORT', 'Self Aware', 'Receive your first Performance DNA Report', '🧬', 50, '{"type": "report_count", "target": 1}', NOW());
+
+-- ===================================================
+-- CONTENT HUB EXTENDED TABLES
+-- ===================================================
+
+-- Content Bookmarks
+CREATE TABLE IF NOT EXISTS content_bookmarks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_bookmark (content_id, user_id),
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Content Notes
+CREATE TABLE IF NOT EXISTS content_notes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    note_text TEXT NOT NULL,
+    timestamp_seconds INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Content Vocabulary
+CREATE TABLE IF NOT EXISTS content_vocabulary (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    word VARCHAR(100) NOT NULL,
+    definition TEXT,
+    example_sentence TEXT,
+    timestamp_seconds INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_vocab (content_id, user_id, word),
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Content Quizzes
+CREATE TABLE IF NOT EXISTS content_quizzes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    question TEXT NOT NULL,
+    option_a TEXT NOT NULL,
+    option_b TEXT NOT NULL,
+    option_c TEXT NOT NULL,
+    option_d TEXT NOT NULL,
+    correct_answer VARCHAR(1) NOT NULL,
+    explanation TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE
+);
+
+-- Content Quiz Attempts
+CREATE TABLE IF NOT EXISTS content_quiz_attempts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    quiz_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    user_answer VARCHAR(1) NOT NULL,
+    is_correct BOOLEAN NOT NULL,
+    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (quiz_id) REFERENCES content_quizzes(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Sample Quizzes for Content Item 1
+INSERT IGNORE INTO content_quizzes (id, content_id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, is_active, created_at) VALUES
+(1, 1, 'What is the most important thing to prepare before a tech interview?', 'Your resume', 'Understanding the company and role', 'Practicing coding problems', 'All of the above', 'D', 'All aspects are important for a successful tech interview preparation', true, NOW()),
+(2, 1, 'Which data structure is commonly asked in technical interviews?', 'Linked List', 'Binary Tree', 'Hash Table', 'All of the above', 'D', 'All these data structures are fundamental and frequently tested', true, NOW()),
+(3, 1, 'What should you do if you don''t know the answer to a technical question?', 'Stay silent', 'Make up an answer', 'Think out loud and ask clarifying questions', 'Change the topic', 'C', 'Interviewers want to see your problem-solving process', true, NOW());
+
+-- Sample Quizzes for Content Item 2
+INSERT IGNORE INTO content_quizzes (id, content_id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, is_active, created_at) VALUES
+(4, 2, 'What is a key benefit of remote work?', 'No commute time', 'Flexible schedule', 'Better work-life balance', 'All of the above', 'D', 'Remote work offers multiple benefits to employees', true, NOW()),
+(5, 2, 'What is a common challenge of remote work?', 'Communication barriers', 'Feeling isolated', 'Difficulty separating work and personal life', 'All of the above', 'D', 'Remote work comes with various challenges that need to be managed', true, NOW());
+
+-- ===================================================
+-- CONTENT TESTS & TRANSLATIONS
+-- ===================================================
+
+-- Content Tests Table
+CREATE TABLE IF NOT EXISTS content_tests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) DEFAULT 'MULTIPLE_CHOICE',
+    time_limit INT DEFAULT 30,
+    passing_score INT DEFAULT 70,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE
+);
+
+-- Content Test Questions Table
+CREATE TABLE IF NOT EXISTS content_test_questions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    test_id BIGINT NOT NULL,
+    question TEXT NOT NULL,
+    options JSON,
+    correct_answer TEXT NOT NULL,
+    explanation TEXT,
+    points INT DEFAULT 1,
+    order_index INT DEFAULT 0,
+    FOREIGN KEY (test_id) REFERENCES content_tests(id) ON DELETE CASCADE
+);
+
+-- Content Test Attempts Table
+CREATE TABLE IF NOT EXISTS content_test_attempts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    test_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    score INT NOT NULL,
+    total_questions INT NOT NULL,
+    correct_answers INT NOT NULL,
+    time_spent INT NOT NULL,
+    passed BOOLEAN DEFAULT FALSE,
+    answers JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (test_id) REFERENCES content_tests(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Content Translations Table
+CREATE TABLE IF NOT EXISTS content_translations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    original_text TEXT NOT NULL,
+    translated_text TEXT NOT NULL,
+    source_language VARCHAR(10),
+    target_language VARCHAR(10),
+    timestamp_seconds INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_translation (content_id, user_id, original_text(255)),
+    FOREIGN KEY (content_id) REFERENCES content_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Sample Tests for Content Item 1 (Tech Interview)
+INSERT IGNORE INTO content_tests (id, content_id, title, description, type, time_limit, passing_score, is_active, created_at) VALUES
+(1, 1, 'Tech Interview Comprehension Test', 'Test your understanding of technical interview strategies and best practices', 'MULTIPLE_CHOICE', 15, 70, true, NOW()),
+(2, 2, 'Remote Work Knowledge Test', 'Assess your knowledge about remote work trends and challenges', 'MULTIPLE_CHOICE', 10, 70, true, NOW());
+
+-- Sample Test Questions for Test 1
+INSERT IGNORE INTO content_test_questions (id, test_id, question, options, correct_answer, explanation, points, order_index) VALUES
+(1, 1, 'What is the STAR method commonly used for in interviews?', '["Answering behavioral questions", "Solving coding problems", "Negotiating salary", "Writing resumes"]', 'A', 'STAR (Situation, Task, Action, Result) is a structured method for answering behavioral interview questions', 2, 1),
+(2, 1, 'Which of the following is NOT a good practice during a technical interview?', '["Thinking out loud", "Asking clarifying questions", "Memorizing solutions", "Discussing trade-offs"]', 'C', 'Memorizing solutions without understanding is not recommended. Interviewers value problem-solving skills', 2, 2),
+(3, 1, 'What should you do if you get stuck on a coding problem?', '["Give up immediately", "Ask for hints", "Stay silent", "Change the topic"]', 'B', 'Asking for hints shows you can collaborate and seek help when needed', 2, 3),
+(4, 1, 'How important is it to research the company before an interview?', '["Not important", "Somewhat important", "Very important", "Only for senior positions"]', 'C', 'Researching the company shows genuine interest and helps you ask relevant questions', 2, 4),
+(5, 1, 'What is the best way to handle a question you don''t know the answer to?', '["Admit you don''t know and explain your approach to finding out", "Make up an answer", "Skip the question", "Blame the interviewer"]', 'A', 'Honesty and showing your problem-solving approach is valued more than pretending to know everything', 2, 5);
+
+-- Sample Test Questions for Test 2
+INSERT IGNORE INTO content_test_questions (id, test_id, question, options, correct_answer, explanation, points, order_index) VALUES
+(6, 2, 'What is a key advantage of remote work for companies?', '["Access to global talent", "Lower office costs", "Increased productivity", "All of the above"]', 'D', 'Remote work offers multiple benefits to companies including cost savings and access to wider talent pool', 2, 1),
+(7, 2, 'Which tool is essential for remote team collaboration?', '["Video conferencing software", "Project management tools", "Instant messaging", "All of the above"]', 'D', 'Effective remote work requires a combination of communication and collaboration tools', 2, 2),
+(8, 2, 'What is a common challenge of managing remote teams?', '["Building team culture", "Ensuring accountability", "Communication barriers", "All of the above"]', 'D', 'Remote team management comes with unique challenges that require specific strategies', 2, 3),
+(9, 2, 'How can remote workers maintain work-life balance?', '["Set clear boundaries", "Create a dedicated workspace", "Stick to a schedule", "All of the above"]', 'D', 'Maintaining work-life balance in remote work requires multiple strategies', 2, 4),
+(10, 2, 'What is the future trend of remote work according to experts?', '["Hybrid models will dominate", "Everyone will return to office", "Fully remote will be rare", "No change expected"]', 'A', 'Most experts predict hybrid work models combining remote and office work will become the norm', 2, 5);

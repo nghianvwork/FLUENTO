@@ -3,7 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import {
   LayoutDashboard, MessageSquare, Briefcase, Mic, BookOpen,
   Users, BarChart3, User, LogOut, Sparkles, Trophy, Calendar, Target,
-  Shield, FileText, Flag, Settings, CreditCard
+  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck, Code
 } from 'lucide-react';
 
 const navSections = [
@@ -15,6 +15,14 @@ const navSections = [
       { path: '/app/career', icon: Briefcase, label: 'Career English' },
       { path: '/app/accent', icon: Mic, label: 'Accent Coach' },
       { path: '/app/content', icon: BookOpen, label: 'Content Hub' },
+    ],
+  },
+  {
+    title: 'Learning Tools',
+    items: [
+      { path: '/app/content/my-translations', icon: Languages, label: 'My Translations' },
+      { path: '/app/content/my-tests', icon: ClipboardCheck, label: 'My Tests' },
+      { path: '/app/content/compiler', icon: Code, label: 'Code Compiler' },
     ],
   },
   {

@@ -125,6 +125,14 @@ export interface ContentItem {
   topic: string;
   summary: string;
   tags: string;
+  transcript?: string;
+}
+
+export interface ContentProgress {
+  contentId: number;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export interface SpeakingRoom {
@@ -136,6 +144,69 @@ export interface SpeakingRoom {
   roomType: string;
   status: string;
   currentParticipants: number;
+}
+
+export interface CommunityClub {
+  id: number;
+  name: string;
+  focus: string;
+  level: string;
+  members: number;
+  joined: boolean;
+}
+
+export interface CommunityClubDetail {
+  id: number;
+  name: string;
+  focus: string;
+  level: string;
+  members: number;
+  joined: boolean;
+}
+
+export interface CommunityClubMember {
+  id: number;
+  fullName: string;
+  avatarUrl?: string;
+  role: string;
+}
+
+export interface CommunityPostComment {
+  id: number;
+  authorId: number;
+  authorName: string;
+  authorAvatarUrl?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommunityPost {
+  id: number;
+  authorId: number;
+  authorName: string;
+  authorAvatarUrl?: string;
+  content: string;
+  createdAt: string;
+  comments: CommunityPostComment[];
+}
+
+export interface CommunityEvent {
+  id: number;
+  title: string;
+  timeLabel: string;
+  host: string;
+  reserved: number;
+  capacity: number;
+  reservedByUser: boolean;
+}
+
+export interface CommunityMatch {
+  memberId: number;
+  memberName: string;
+  memberAvatarUrl?: string;
+  memberRole: string;
+  clubId: number;
+  clubName: string;
 }
 
 export interface PerformanceReport {

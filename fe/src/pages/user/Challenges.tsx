@@ -1,26 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Flame, Target, Trophy, Zap } from 'lucide-react';
+import { challengeApi } from '../../services/apiServices';
 import toast from 'react-hot-toast';
 
-const weeklyChallenges = [
-  { id: 1, title: '7-Day Speaking Sprint', desc: 'Join any speaking room daily', progress: 5, goal: 7, reward: '500 XP' },
-  { id: 2, title: 'Vocabulary Heatwave', desc: 'Learn 50 new words', progress: 28, goal: 50, reward: 'Accent Pack' },
-  { id: 3, title: 'Roleplay Mastery', desc: 'Finish 5 roleplay sessions', progress: 3, goal: 5, reward: 'AI Coach Boost' },
-];
-
-const dailyMissions = [
-  { id: 1, title: 'Shadow 3 sentences', reward: '+80 XP', icon: '🎙️' },
-  { id: 2, title: 'Complete 1 career lesson', reward: '+120 XP', icon: '💼' },
-  { id: 3, title: 'Send 3 voice messages', reward: '+60 XP', icon: '💬' },
-];
+interface Challenge {
+  id: number;
+  title: string;
+  desc: string;
+  type: string;
+  progress: number;
+  goal: number;
+  reward: string;
+  icon: string;
+  isClaimed: boolean;
+}
 
 export default function Challenges() {
-  const [claimed, setClaimed] = useState<number[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const claim = (id: number) => {
-    setClaimed((prev) => [...prev, id]);
-    toast.success('Reward claimed');
+  const fetchChallenges = async () => {
+    try {
+      const res = await challengeApi.getChallenges();
+      setChallenges(res.data.data || []);
+    } catch (err) {
+      toast.error('Failed to load challenges');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchChallenges();
+  }, []);
+
+  const claim = async (id: number) => {
+    try {
+      await challengeApi.claimReward(id);
+      setChallenges(prev => prev.map(c => c.id === id ? { ...c, isClaimed: true } : c));
+      toast.success('Reward claimed!');
+    } catch (err) {
+      toast.error('Cannot claim reward yet');
+    }
+  };
+
+  if (loading) return <div className="text-center text-muted" style={{ padding: 100 }}>Loading challenges...</div>;
+
+  const weeklyChallenges = challenges.filter(c => c.type === 'WEEKLY');
+  const dailyMissions = challenges.filter(c => c.type === 'DAILY');
 
   return (
     <div>
@@ -33,9 +60,9 @@ export default function Challenges() {
         <div className="flex items-center justify-between" style={{ flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontWeight: 700 }}>Weekly Momentum</div>
-            <div className="text-sm text-muted">Finish 3 missions to unlock a bonus badge</div>
+            <div className="text-sm text-muted">Finish missions to unlock a bonus badge</div>
           </div>
-          <div className="pill pill-orange"><Flame size={14} /> 5-day streak</div>
+          <div className="pill pill-orange"><Flame size={14} /> Keep going!</div>
         </div>
       </div>
 
@@ -56,6 +83,16 @@ export default function Challenges() {
               <div className="text-sm text-muted">{c.progress}/{c.goal} completed</div>
               <div className="pill pill-green"><Trophy size={12} /> {c.reward}</div>
             </div>
+            {c.progress >= c.goal && !c.isClaimed && (
+              <button className="btn btn-sm btn-primary w-full mt-12" onClick={() => claim(c.id)}>
+                Claim Reward
+              </button>
+            )}
+            {c.isClaimed && (
+              <button className="btn btn-sm btn-secondary w-full mt-12" disabled>
+                Claimed
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -66,18 +103,23 @@ export default function Challenges() {
           <div key={m.id} className="card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-12">
-                <div className="card-icon" style={{ background: 'var(--bg-tertiary)' }}>{m.icon}</div>
+                <div className="card-icon" style={{ background: 'var(--bg-tertiary)' }}>{m.icon || '🏆'}</div>
                 <div>
                   <div style={{ fontWeight: 700 }}>{m.title}</div>
                   <div className="text-sm text-muted">Reward {m.reward}</div>
+                  <div className="text-sm text-muted">{m.progress}/{m.goal} completed</div>
                 </div>
               </div>
-              <button className="btn btn-sm btn-secondary" disabled={claimed.includes(m.id)} onClick={() => claim(m.id)}>
-                <Zap size={14} /> {claimed.includes(m.id) ? 'Claimed' : 'Claim'}
+              <button 
+                className="btn btn-sm btn-secondary" 
+                disabled={m.isClaimed || m.progress < m.goal} 
+                onClick={() => claim(m.id)}>
+                <Zap size={14} /> {m.isClaimed ? 'Claimed' : 'Claim'}
               </button>
             </div>
           </div>
         ))}
+        {dailyMissions.length === 0 && <div className="text-muted">No daily missions available right now.</div>}
       </div>
     </div>
   );

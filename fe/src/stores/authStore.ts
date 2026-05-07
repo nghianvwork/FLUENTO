@@ -15,7 +15,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isHydrated: false,
   login: (data) => {
-    const normalized = { ...data, role: normalizeRole(data.role) };
+    const normalized = { ...data, role: normalizeRole(data.role || '') };
     localStorage.setItem('enova_token', data.token);
     localStorage.setItem('enova_user', JSON.stringify(normalized));
     set({ user: normalized, isAuthenticated: true, isHydrated: true });
@@ -30,14 +30,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     const token = localStorage.getItem('enova_token');
     if (stored && token) {
       const parsed = JSON.parse(stored);
-      set({ user: { ...parsed, role: normalizeRole(parsed.role) }, isAuthenticated: true, isHydrated: true });
+      set({ user: { ...parsed, role: normalizeRole(parsed.role || '') }, isAuthenticated: true, isHydrated: true });
       return;
     }
     set({ user: null, isAuthenticated: false, isHydrated: true });
   },
 }));
 
-function normalizeRole(role?: string) {
-  if (!role) return role;
+function normalizeRole(role: string) {
   return role.toUpperCase().replace('ROLE_', '');
 }

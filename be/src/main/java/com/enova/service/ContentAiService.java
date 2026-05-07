@@ -2,6 +2,8 @@ package com.enova.service;
 
 import com.enova.dto.response.ContentAiSummaryResponse;
 import com.enova.model.ContentItem;
+import com.enova.model.ContentQuiz;
+import com.enova.repository.ContentQuizRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,7 @@ public class ContentAiService {
 
     private final ContentService contentService;
     private final GeminiService geminiService;
+    private final ContentQuizRepository quizRepository;
 
     public ContentAiSummaryResponse summarize(Long contentId, String focus) {
         ContentItem item = contentService.getContentById(contentId);
@@ -34,6 +37,28 @@ public class ContentAiService {
                 .keyVocabulary(vocab)
                 .discussionQuestions(questions)
                 .build();
+    }
+
+    public void generateQuizzes(Long contentId) {
+        ContentItem item = contentService.getContentById(contentId);
+        var json = geminiService.generateContentQuizzes(item.getTitle(), item.getSummary()).orElse(null);
+
+        if (json != null && json.isArray()) {
+            json.forEach(q -> {
+                ContentQuiz quiz = ContentQuiz.builder()
+                        .content(item)
+                        .question(q.path("question").asText())
+                        .optionA(q.path("optionA").asText())
+                        .optionB(q.path("optionB").asText())
+                        .optionC(q.path("optionC").asText())
+                        .optionD(q.path("optionD").asText())
+                        .correctAnswer(q.path("correctAnswer").asText())
+                        .explanation(q.path("explanation").asText())
+                        .isActive(true)
+                        .build();
+                quizRepository.save(quiz);
+            });
+        }
     }
 
         private static class JsonArrayReader {

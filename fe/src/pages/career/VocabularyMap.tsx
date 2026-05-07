@@ -45,6 +45,7 @@ export default function VocabularyMap() {
         <div style={{ marginLeft: 'auto' }} className="flex gap-8">
           <button className={`btn btn-sm ${mode === 'browse' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMode('browse')}>Browse</button>
           <button className={`btn btn-sm ${mode === 'review' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMode('review')}>Flashcard</button>
+          <button className="btn btn-sm" style={{ background: 'var(--accent-green)', color: '#fff' }} onClick={() => navigate(`/app/career/${id}/lesson`)}>Start Lesson</button>
         </div>
       </div>
 

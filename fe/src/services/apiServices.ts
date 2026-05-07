@@ -50,6 +50,54 @@ export const contentApi = {
   getAll: (topic?: string, type?: string) =>
     api.get('/content', { params: { topic, type } }),
   getById: (id: number) => api.get(`/content/${id}`),
+  getProgress: () => api.get('/content/progress'),
+  start: (contentId: number) => api.post(`/content/${contentId}/start`),
+  complete: (contentId: number) => api.post(`/content/${contentId}/complete`),
+  
+  // Bookmarks
+  getBookmarks: () => api.get('/content/bookmarks'),
+  toggleBookmark: (contentId: number) => api.post(`/content/${contentId}/bookmark`),
+  getBookmarkStatus: (contentId: number) => api.get(`/content/${contentId}/bookmark-status`),
+  
+  // Notes
+  getNotes: (contentId?: number) => api.get('/content/notes', { params: { contentId } }),
+  createNote: (data: { contentId: number; noteText: string; timestampSeconds?: number }) =>
+    api.post('/content/notes', data),
+  updateNote: (noteId: number, data: { contentId: number; noteText: string; timestampSeconds?: number }) =>
+    api.put(`/content/notes/${noteId}`, data),
+  deleteNote: (noteId: number) => api.delete(`/content/notes/${noteId}`),
+  
+  // Vocabulary
+  getVocabulary: (contentId?: number) => api.get('/content/vocabulary', { params: { contentId } }),
+  saveVocabulary: (data: { contentId: number; word: string; definition?: string; exampleSentence?: string; timestampSeconds?: number }) =>
+    api.post('/content/vocabulary', data),
+  deleteVocabulary: (vocabId: number) => api.delete(`/content/vocabulary/${vocabId}`),
+  
+  // Quizzes
+  getQuizzes: (contentId: number) => api.get(`/content/${contentId}/quizzes`),
+  submitQuizAnswer: (data: { quizId: number; answer: string }) =>
+    api.post('/content/quizzes/answer', data),
+  
+  // Translations
+  getTranslations: (contentId: number) => api.get(`/content/${contentId}/translations`),
+  getMyTranslations: () => api.get('/content/translations/my'),
+  createTranslation: (contentId: number, data: { originalText: string; sourceLanguage: string; targetLanguage: string; timestampSeconds?: number }) =>
+    api.post(`/content/${contentId}/translations`, data),
+  deleteTranslation: (translationId: number) => api.delete(`/content/translations/${translationId}`),
+  
+  // Tests
+  getTests: (contentId: number) => api.get(`/content/${contentId}/tests`),
+  getTest: (testId: number) => api.get(`/content/tests/${testId}`),
+  submitTest: (testId: number, data: { answers: Record<number, string>; timeSpent: number }) =>
+    api.post(`/content/tests/${testId}/submit`, data),
+  getTestAttempts: (testId: number) => api.get(`/content/tests/${testId}/attempts`),
+  getMyTestAttempts: () => api.get('/content/tests/attempts/my'),
+};
+
+export const compilerApi = {
+  execute: (data: { language: string; code: string; input: string }) =>
+    api.post('/compiler/execute', data),
+  getHistory: () => api.get('/compiler/history'),
 };
 
 export const speakingApi = {
@@ -111,6 +159,23 @@ export const mediaApi = {
   },
 };
 
+export const communityApi = {
+  getClubs: () => api.get('/community/clubs'),
+  joinClub: (clubId: number) => api.post(`/community/clubs/${clubId}/join`),
+  leaveClub: (clubId: number) => api.post(`/community/clubs/${clubId}/leave`),
+  getClubDetail: (clubId: number) => api.get(`/community/clubs/${clubId}`),
+  getClubMembers: (clubId: number) => api.get(`/community/clubs/${clubId}/members`),
+  getClubPosts: (clubId: number) => api.get(`/community/clubs/${clubId}/posts`),
+  createClubPost: (clubId: number, data: { content: string }) =>
+    api.post(`/community/clubs/${clubId}/posts`, data),
+  addClubComment: (clubId: number, postId: number, data: { content: string }) =>
+    api.post(`/community/clubs/${clubId}/posts/${postId}/comments`, data),
+  match: () => api.get('/community/match'),
+  getEvents: () => api.get('/community/events'),
+  reserveEvent: (eventId: number) => api.post(`/community/events/${eventId}/reserve`),
+  cancelReservation: (eventId: number) => api.post(`/community/events/${eventId}/cancel`),
+};
+
 export const contentAiApi = {
   summary: (data: { contentId: number; focus?: string }) => api.post('/content/ai/summary', data),
 };
@@ -118,4 +183,18 @@ export const contentAiApi = {
 export const paymentApi = {
   createVnpay: (data: { amount: number; orderInfo?: string; bankCode?: string }) =>
     api.post('/payments/vnpay/create', data),
+};
+
+export const achievementApi = {
+  getAchievements: () => api.get('/v2/achievements'),
+};
+
+export const challengeApi = {
+  getChallenges: () => api.get('/v2/challenges'),
+  claimReward: (id: number) => api.post(`/v2/challenges/${id}/claim`),
+};
+
+export const srsApi = {
+  getDueReviews: () => api.get('/v2/srs/due'),
+  submitReview: (data: { progressId: number; quality: number }) => api.post('/v2/srs/review', data),
 };
