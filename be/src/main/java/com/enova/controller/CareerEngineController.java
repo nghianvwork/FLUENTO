@@ -40,6 +40,12 @@ public class CareerEngineController {
         return ResponseEntity.ok(ApiResponse.success(careerEngineService.getVocabularyByCareerPath(id)));
     }
 
+    @PostMapping("/paths/{id}/seed")
+    public ResponseEntity<ApiResponse<String>> seedVocabulary(@PathVariable Long id) {
+        careerEngineService.seedVocabulariesForPathAsync(id);
+        return ResponseEntity.ok(ApiResponse.success("Seeding started in background for 500 words."));
+    }
+
     @PostMapping("/lessons/{lessonId}/start")
     public ResponseEntity<ApiResponse<LessonProgress>> startLesson(
             @AuthenticationPrincipal UserDetails userDetails, @PathVariable Long lessonId) {

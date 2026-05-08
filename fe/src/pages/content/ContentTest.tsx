@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { ClipboardCheck, Clock, Award, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ClipboardCheck, Clock, Award, ChevronRight, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { contentApi } from '../../services/apiServices';
+import toast from 'react-hot-toast';
 
 interface TestQuestion {
   id: number;
@@ -42,13 +44,40 @@ export default function ContentTest({ contentId }: ContentTestProps) {
   const [result, setResult] = useState<TestAttempt | null>(null);
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadTests();
   }, [contentId]);
 
+  const handleSubmit = useCallback(async () => {
+    if (!selectedTest || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+
+    try {
+      const res = await contentApi.submitTest(selectedTest.id, { answers, timeSpent });
+      const data = res.data;
+      if (data.success) {
+        setResult(data.data);
+        setTimeLeft(0);
+        if (data.data.passed) {
+          toast.success('Congratulations! You passed! 🎉');
+        } else {
+          toast('Keep practicing! You can do it! 💪', { icon: '📝' });
+        }
+      }
+    } catch (error) {
+      console.error('Submit failed:', error);
+      toast.error('Failed to submit test');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedTest, isSubmitting, startTime, answers]);
+
   useEffect(() => {
-    if (selectedTest && timeLeft > 0) {
+    if (selectedTest && timeLeft > 0 && !result) {
       const timer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -60,17 +89,17 @@ export default function ContentTest({ contentId }: ContentTestProps) {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [selectedTest, timeLeft]);
+  }, [selectedTest, timeLeft, result, handleSubmit]);
 
   const loadTests = async () => {
     try {
-      const response = await fetch(`/api/content/${contentId}/tests`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      if (data.success) setTests(data.data);
+      const res = await contentApi.getTests(contentId);
+      const data = res.data;
+      if (data.success) setTests(data.data || []);
     } catch (error) {
       console.error('Failed to load tests:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,42 +109,13 @@ export default function ContentTest({ contentId }: ContentTestProps) {
     setResult(null);
     setTimeLeft(test.timeLimit * 60);
     setStartTime(Date.now());
-    
+
     try {
-      const response = await fetch(`/api/content/tests/${test.id}/attempts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      if (data.success) setAttempts(data.data);
+      const res = await contentApi.getTestAttempts(test.id);
+      const data = res.data;
+      if (data.success) setAttempts(data.data || []);
     } catch (error) {
       console.error('Failed to load attempts:', error);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedTest || isSubmitting) return;
-    
-    setIsSubmitting(true);
-    const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-    
-    try {
-      const response = await fetch(`/api/content/tests/${selectedTest.id}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ answers, timeSpent })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setResult(data.data);
-        setTimeLeft(0);
-      }
-    } catch (error) {
-      console.error('Submit failed:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -134,36 +134,79 @@ export default function ContentTest({ contentId }: ContentTestProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'var(--accent-green)';
+    if (score >= 60) return 'var(--accent-orange)';
+    return 'var(--accent-red)';
+  };
+
+  const answeredCount = Object.keys(answers).length;
+  const totalQuestions = selectedTest?.questions.length || 0;
+
+  // ========== RESULT VIEW ==========
   if (result) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center ${
-            result.passed ? 'bg-green-100' : 'bg-red-100'
-          }`}>
-            <Award className={`w-10 h-10 ${result.passed ? 'text-green-600' : 'text-red-600'}`} />
+      <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%', margin: '0 auto 20px',
+            background: result.passed
+              ? 'linear-gradient(135deg, rgba(0,184,148,0.2), rgba(0,206,201,0.1))'
+              : 'linear-gradient(135deg, rgba(255,107,107,0.2), rgba(253,203,110,0.1))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {result.passed ? (
+              <CheckCircle size={40} style={{ color: 'var(--accent-green)' }} />
+            ) : (
+              <XCircle size={40} style={{ color: 'var(--accent-red)' }} />
+            )}
           </div>
-          
-          <h2 className="text-2xl font-bold mb-2">
-            {result.passed ? 'Congratulations!' : 'Keep Practicing!'}
+
+          <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>
+            {result.passed ? 'Congratulations! 🎉' : 'Keep Practicing! 💪'}
           </h2>
-          <p className="text-gray-600 mb-6">
-            {result.passed ? 'You passed the test!' : 'You need more practice.'}
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+            {result.passed ? 'You passed the test!' : 'Review the material and try again.'}
           </p>
 
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600">{result.score}%</div>
-              <div className="text-sm text-gray-600">Score</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 28 }}>
+            <div style={{
+              padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: getScoreColor(result.score), marginBottom: 4 }}>
+                {result.score}%
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Score</div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-green-600">{result.correctAnswers}</div>
-              <div className="text-sm text-gray-600">Correct</div>
+            <div style={{
+              padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent-green)', marginBottom: 4 }}>
+                {result.correctAnswers}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Correct</div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-gray-600">{formatTime(result.timeSpent)}</div>
-              <div className="text-sm text-gray-600">Time</div>
+            <div style={{
+              padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--accent-orange)', marginBottom: 4 }}>
+                {formatTime(result.timeSpent)}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Time</div>
             </div>
+          </div>
+
+          <div className="progress-bar" style={{ height: 8, marginBottom: 24 }}>
+            <div
+              className="progress-fill"
+              style={{
+                width: `${result.score}%`,
+                background: `linear-gradient(90deg, ${getScoreColor(result.score)}, var(--accent-cyan))`,
+              }}
+            />
           </div>
 
           <button
@@ -172,24 +215,37 @@ export default function ContentTest({ contentId }: ContentTestProps) {
               setResult(null);
               loadTests();
             }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="btn btn-primary"
           >
-            Back to Tests
+            <ArrowLeft size={16} /> Back to Tests
           </button>
         </div>
 
+        {/* Previous Attempts */}
         {attempts.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold mb-4">Previous Attempts</h3>
-            <div className="space-y-2">
-              {attempts.map((attempt) => (
-                <div key={attempt.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                  <span className="text-sm text-gray-600">
+          <div className="card" style={{ marginTop: 16, padding: 20 }}>
+            <h3 style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Previous Attempts</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {attempts.map(attempt => (
+                <div key={attempt.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 14px', background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                     {new Date(attempt.createdAt).toLocaleDateString()}
                   </span>
-                  <span className={`font-semibold ${attempt.passed ? 'text-green-600' : 'text-red-600'}`}>
-                    {attempt.score}%
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontWeight: 700, fontSize: 14,
+                      color: attempt.passed ? 'var(--accent-green)' : 'var(--accent-red)',
+                    }}>
+                      {attempt.score}%
+                    </span>
+                    <span className={`badge ${attempt.passed ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 10 }}>
+                      {attempt.passed ? 'PASS' : 'FAIL'}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -199,92 +255,212 @@ export default function ContentTest({ contentId }: ContentTestProps) {
     );
   }
 
+  // ========== TAKING TEST VIEW ==========
   if (selectedTest) {
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">{selectedTest.title}</h2>
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <Clock className="w-5 h-5" />
-              <span className={timeLeft < 60 ? 'text-red-600' : 'text-gray-700'}>
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        {/* Test Header with Timer */}
+        <div className="card" style={{ marginBottom: 20, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{selectedTest.title}</h2>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {answeredCount}/{totalQuestions} questions answered
+              </span>
+            </div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px', borderRadius: 'var(--radius-md)',
+              background: timeLeft < 60 ? 'rgba(255,107,107,0.15)' : 'var(--bg-secondary)',
+              border: `1px solid ${timeLeft < 60 ? 'rgba(255,107,107,0.3)' : 'var(--border)'}`,
+            }}>
+              <Clock size={16} style={{ color: timeLeft < 60 ? 'var(--accent-red)' : 'var(--accent-orange)' }} />
+              <span style={{
+                fontSize: 18, fontWeight: 700,
+                color: timeLeft < 60 ? 'var(--accent-red)' : 'var(--text-primary)',
+              }}>
                 {formatTime(timeLeft)}
               </span>
             </div>
           </div>
+          <div className="progress-bar" style={{ height: 4, marginTop: 12 }}>
+            <div className="progress-fill" style={{
+              width: `${(answeredCount / totalQuestions) * 100}%`,
+            }} />
+          </div>
+        </div>
 
-          <div className="space-y-6">
-            {selectedTest.questions.map((question, index) => {
-              const options = parseOptions(question.options);
-              return (
-                <div key={question.id} className="border-b pb-6">
-                  <div className="font-semibold mb-3">
-                    {index + 1}. {question.question}
+        {/* Questions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {selectedTest.questions.map((question, index) => {
+            const options = parseOptions(question.options);
+            const selected = answers[question.id];
+            return (
+              <div key={question.id} className="card" style={{
+                borderColor: selected ? 'var(--border-hover)' : 'var(--border)',
+              }}>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                    background: selected
+                      ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))'
+                      : 'var(--bg-tertiary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: selected ? 'white' : 'var(--text-muted)',
+                    fontWeight: 700, fontSize: 14, flexShrink: 0,
+                  }}>
+                    {index + 1}
                   </div>
-                  <div className="space-y-2">
-                    {options.map((option, optIndex) => (
+                  <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.6, paddingTop: 4 }}>
+                    {question.question}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 44 }}>
+                  {options.map((option, optIndex) => {
+                    const letter = String.fromCharCode(65 + optIndex);
+                    const isSelected = selected === letter;
+                    return (
                       <label
                         key={optIndex}
-                        className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                          border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected
+                            ? 'rgba(108,92,231,0.1)'
+                            : 'var(--bg-secondary)',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                        }}
                       >
+                        <div style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {isSelected && (
+                            <div style={{
+                              width: 10, height: 10, borderRadius: '50%',
+                              background: 'var(--primary)',
+                            }} />
+                          )}
+                        </div>
                         <input
                           type="radio"
                           name={`question-${question.id}`}
-                          value={String.fromCharCode(65 + optIndex)}
-                          checked={answers[question.id] === String.fromCharCode(65 + optIndex)}
-                          onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
-                          className="w-4 h-4"
+                          value={letter}
+                          checked={isSelected}
+                          onChange={e => setAnswers({ ...answers, [question.id]: e.target.value })}
+                          style={{ display: 'none' }}
                         />
-                        <span>{String.fromCharCode(65 + optIndex)}. {option}</span>
+                        <span style={{ fontSize: 14, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                          <strong>{letter}.</strong> {option}
+                        </span>
                       </label>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
 
+                {question.points > 1 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10, paddingLeft: 44 }}>
+                    {question.points} points
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Submit Button */}
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            onClick={() => { setSelectedTest(null); setResult(null); }}
+            className="btn btn-secondary"
+          >
+            <ArrowLeft size={14} /> Cancel
+          </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || Object.keys(answers).length < selectedTest.questions.length}
-            className="w-full mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            disabled={isSubmitting || answeredCount < totalQuestions}
+            className="btn btn-primary btn-lg"
+            style={{ opacity: isSubmitting || answeredCount < totalQuestions ? 0.5 : 1 }}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Test'}
+            {isSubmitting ? 'Submitting...' : `Submit Test (${answeredCount}/${totalQuestions})`}
           </button>
         </div>
       </div>
     );
   }
 
+  // ========== TEST LIST VIEW ==========
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: '3px solid var(--border)', borderTopColor: 'var(--primary)',
+          animation: 'spin 1s linear infinite', margin: '0 auto 12px',
+        }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Loading tests...</p>
+      </div>
+    );
+  }
+
+  if (tests.length === 0) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+        <ClipboardCheck size={36} style={{ color: 'var(--text-muted)', marginBottom: 12 }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>No tests available for this content</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-6">
-      {tests.map((test) => (
-        <div key={test.id} className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                <h3 className="text-xl font-semibold">{test.title}</h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {tests.map(test => (
+        <div key={test.id} className="card">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <ClipboardCheck size={18} style={{ color: 'var(--primary-light)' }} />
+                <h3 style={{ fontSize: 17, fontWeight: 700 }}>{test.title}</h3>
               </div>
-              <p className="text-gray-600 mb-4">{test.description}</p>
-              
-              <div className="flex gap-4 text-sm text-gray-600">
-                <span>📝 {test.questions.length} questions</span>
-                <span>⏱️ {test.timeLimit} minutes</span>
-                <span>🎯 Pass: {test.passingScore}%</span>
+              {test.description && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 12, lineHeight: 1.6 }}>
+                  {test.description}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <span className="badge badge-primary" style={{ fontSize: 12 }}>
+                  📝 {test.questions.length} questions
+                </span>
+                <span className="badge badge-orange" style={{ fontSize: 12 }}>
+                  ⏱️ {test.timeLimit} minutes
+                </span>
+                <span className="badge badge-cyan" style={{ fontSize: 12 }}>
+                  🎯 Pass: {test.passingScore}%
+                </span>
               </div>
             </div>
-            
+
             <button
               onClick={() => startTest(test)}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="btn btn-primary"
+              style={{ marginLeft: 16, flexShrink: 0 }}
             >
-              Start Test
-              <ChevronRight className="w-4 h-4" />
+              Start Test <ChevronRight size={16} />
             </button>
           </div>
         </div>
       ))}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

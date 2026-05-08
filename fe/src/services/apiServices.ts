@@ -94,12 +94,6 @@ export const contentApi = {
   getMyTestAttempts: () => api.get('/content/tests/attempts/my'),
 };
 
-export const compilerApi = {
-  execute: (data: { language: string; code: string; input: string }) =>
-    api.post('/compiler/execute', data),
-  getHistory: () => api.get('/compiler/history'),
-};
-
 export const speakingApi = {
   getRooms: () => api.get('/speaking/rooms'),
   joinRoom: (roomId: number) => api.post(`/speaking/rooms/${roomId}/join`),
@@ -132,7 +126,13 @@ export const adminApi = {
   createScenario: (data: any) => api.post('/admin/roleplay/scenarios', data),
   updateScenario: (id: number, data: any) => api.put(`/admin/roleplay/scenarios/${id}`, data),
   deleteScenario: (id: number) => api.delete(`/admin/roleplay/scenarios/${id}`),
-  getRooms: () => api.get('/admin/speaking/rooms'),
+
+  getTests: () => api.get('/admin/tests'),
+  createTest: (data: any) => api.post('/admin/tests', data),
+  updateTest: (id: number, data: any) => api.put(`/admin/tests/${id}`, data),
+  deleteTest: (id: number) => api.delete(`/admin/tests/${id}`),
+
+  getSpeakingRooms: () => api.get('/admin/speaking/rooms'),
   createRoom: (data: any) => api.post('/admin/speaking/rooms', data),
   updateRoom: (id: number, data: any) => api.put(`/admin/speaking/rooms/${id}`, data),
   deleteRoom: (id: number) => api.delete(`/admin/speaking/rooms/${id}`),

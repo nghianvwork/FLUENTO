@@ -3,7 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import {
   LayoutDashboard, MessageSquare, Briefcase, Mic, BookOpen,
   Users, BarChart3, User, LogOut, Sparkles, Trophy, Calendar, Target,
-  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck, Code
+  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck
 } from 'lucide-react';
 
 const navSections = [
@@ -22,8 +22,8 @@ const navSections = [
     items: [
       { path: '/app/content/my-translations', icon: Languages, label: 'My Translations' },
       { path: '/app/content/my-tests', icon: ClipboardCheck, label: 'My Tests' },
-      { path: '/app/content/compiler', icon: Code, label: 'Code Compiler' },
     ],
+
   },
   {
     title: 'Community',
@@ -59,6 +59,7 @@ const adminItems = [
   { path: '/app/admin/content', icon: FileText, label: 'Content' },
   { path: '/app/admin/roleplay', icon: MessageSquare, label: 'Roleplay' },
   { path: '/app/admin/rooms', icon: Mic, label: 'Speaking Rooms' },
+  { path: '/app/admin/tests', icon: ClipboardCheck, label: 'Tests' },
   { path: '/app/admin/reports', icon: BarChart3, label: 'Reports' },
   { path: '/app/admin/moderation', icon: Flag, label: 'Moderation' },
   { path: '/app/admin/settings', icon: Settings, label: 'Settings' },

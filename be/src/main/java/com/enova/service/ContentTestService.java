@@ -1,5 +1,7 @@
 package com.enova.service;
 
+import com.enova.dto.request.AdminTestQuestionRequest;
+import com.enova.dto.request.AdminTestRequest;
 import com.enova.dto.request.ContentTestAnswerRequest;
 import com.enova.dto.response.ContentTestAttemptResponse;
 import com.enova.dto.response.ContentTestQuestionResponse;
@@ -24,6 +26,7 @@ public class ContentTestService {
     private final ContentTestQuestionRepository questionRepository;
     private final ContentTestAttemptRepository attemptRepository;
     private final UserRepository userRepository;
+    private final ContentItemRepository contentItemRepository;
     private final ObjectMapper objectMapper;
 
     public List<ContentTestResponse> getTestsByContent(Long contentId) {
@@ -112,5 +115,109 @@ public class ContentTestService {
                 .stream()
                 .map(ContentTestAttemptResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    public List<ContentTestResponse> getAllTests() {
+        return testRepository.findAll()
+                .stream()
+                .map(test -> {
+                    List<ContentTestQuestionResponse> questions = questionRepository
+                            .findByTestIdOrderByOrderIndexAsc(test.getId())
+                            .stream()
+                            .map(ContentTestQuestionResponse::from)
+                            .collect(Collectors.toList());
+                    return ContentTestResponse.from(test, questions);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ContentTestResponse createTest(AdminTestRequest request) {
+        ContentItem content = contentItemRepository.findById(request.getContentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Content not found"));
+
+        ContentTest test = ContentTest.builder()
+                .content(content)
+                .title(request.getTitle() != null ? request.getTitle() : "Untitled Test")
+                .description(request.getDescription())
+                .type(request.getType() != null ? ContentTest.TestType.valueOf(request.getType()) : ContentTest.TestType.MULTIPLE_CHOICE)
+                .timeLimit(request.getTimeLimit() != null ? request.getTimeLimit() : 30)
+                .passingScore(request.getPassingScore() != null ? request.getPassingScore() : 70)
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .build();
+        
+        test = testRepository.save(test);
+
+        if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
+            for (AdminTestQuestionRequest qReq : request.getQuestions()) {
+                ContentTestQuestion q = ContentTestQuestion.builder()
+                        .test(test)
+                        .question(qReq.getQuestion())
+                        .options(qReq.getOptions())
+                        .correctAnswer(qReq.getCorrectAnswer())
+                        .explanation(qReq.getExplanation())
+                        .points(qReq.getPoints() != null ? qReq.getPoints() : 1)
+                        .orderIndex(qReq.getOrderIndex() != null ? qReq.getOrderIndex() : 0)
+                        .build();
+                questionRepository.save(q);
+            }
+        }
+
+        return getTestResponse(test);
+    }
+
+    @Transactional
+    public ContentTestResponse updateTest(Long testId, AdminTestRequest request) {
+        ContentTest test = testRepository.findById(testId)
+                .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
+
+        if (request.getContentId() != null) {
+            ContentItem content = contentItemRepository.findById(request.getContentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Content not found"));
+            test.setContent(content);
+        }
+        if (request.getTitle() != null) test.setTitle(request.getTitle());
+        if (request.getDescription() != null) test.setDescription(request.getDescription());
+        if (request.getType() != null) test.setType(ContentTest.TestType.valueOf(request.getType()));
+        if (request.getTimeLimit() != null) test.setTimeLimit(request.getTimeLimit());
+        if (request.getPassingScore() != null) test.setPassingScore(request.getPassingScore());
+        if (request.getIsActive() != null) test.setIsActive(request.getIsActive());
+
+        test = testRepository.save(test);
+
+        // Update questions
+        if (request.getQuestions() != null) {
+            List<ContentTestQuestion> existingQuestions = questionRepository.findByTestIdOrderByOrderIndexAsc(testId);
+            questionRepository.deleteAll(existingQuestions);
+
+            for (AdminTestQuestionRequest qReq : request.getQuestions()) {
+                ContentTestQuestion q = ContentTestQuestion.builder()
+                        .test(test)
+                        .question(qReq.getQuestion())
+                        .options(qReq.getOptions())
+                        .correctAnswer(qReq.getCorrectAnswer())
+                        .explanation(qReq.getExplanation())
+                        .points(qReq.getPoints() != null ? qReq.getPoints() : 1)
+                        .orderIndex(qReq.getOrderIndex() != null ? qReq.getOrderIndex() : 0)
+                        .build();
+                questionRepository.save(q);
+            }
+        }
+
+        return getTestResponse(test);
+    }
+
+    private ContentTestResponse getTestResponse(ContentTest test) {
+        List<ContentTestQuestionResponse> questions = questionRepository
+                .findByTestIdOrderByOrderIndexAsc(test.getId())
+                .stream()
+                .map(ContentTestQuestionResponse::from)
+                .collect(Collectors.toList());
+        return ContentTestResponse.from(test, questions);
+    }
+
+    @Transactional
+    public void deleteTest(Long testId) {
+        testRepository.deleteById(testId);
     }
 }

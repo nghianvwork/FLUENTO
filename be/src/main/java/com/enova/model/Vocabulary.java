@@ -22,7 +22,16 @@ public class Vocabulary {
     private String definition;
 
     @Column(length = 100)
-    private String pronunciationIpa;
+    private String phonetic;
+
+    @Column(length = 50)
+    private String partOfSpeech;
+
+    @Column(columnDefinition = "TEXT")
+    private String meaningVi;
+
+    @Column(columnDefinition = "TEXT")
+    private String exampleSentence;
 
     @Column(columnDefinition = "JSON")
     private String exampleSentences;

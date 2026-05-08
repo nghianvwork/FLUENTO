@@ -18,7 +18,6 @@ import MyVocabulary from './pages/content/MyVocabulary';
 import MyNotes from './pages/content/MyNotes';
 import MyTranslations from './pages/content/MyTranslations';
 import MyTests from './pages/content/MyTests';
-import CodeCompiler from './pages/content/CodeCompiler';
 import LearningPath from './pages/content/LearningPath';
 import SpacedRepetition from './pages/content/SpacedRepetition';
 import RoomList from './pages/speaking/RoomList';
@@ -38,6 +37,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminContent from './pages/admin/AdminContent';
 import AdminRoleplay from './pages/admin/AdminRoleplay';
 import AdminSpeakingRooms from './pages/admin/AdminSpeakingRooms';
+import AdminTests from './pages/admin/AdminTests';
 import AdminReports from './pages/admin/AdminReports';
 import AdminModeration from './pages/admin/AdminModeration';
 import AdminSettings from './pages/admin/AdminSettings';
@@ -86,7 +86,10 @@ export default function App() {
           <Route path="content/my-notes" element={<MyNotes />} />
           <Route path="content/my-translations" element={<MyTranslations />} />
           <Route path="content/my-tests" element={<MyTests />} />
-          <Route path="content/compiler" element={<CodeCompiler />} />
+          <Route path="admin/content" element={<AdminRoute><AdminContent /></AdminRoute>} />
+          <Route path="admin/scenarios" element={<AdminRoute><AdminRoleplay /></AdminRoute>} />
+          <Route path="admin/speaking-rooms" element={<AdminRoute><AdminSpeakingRooms /></AdminRoute>} />
+          <Route path="admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
           <Route path="content/learning-path" element={<LearningPath />} />
           <Route path="speaking" element={<RoomList />} />
           <Route path="speaking/:id" element={<SpeakingRoomPage />} />

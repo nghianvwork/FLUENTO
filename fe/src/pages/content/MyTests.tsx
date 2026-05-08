@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ClipboardCheck, Award, Clock, TrendingUp, Calendar } from 'lucide-react';
+import { ClipboardCheck, Award, Clock, TrendingUp, Calendar, Target, BarChart3, RefreshCw } from 'lucide-react';
+import { contentApi } from '../../services/apiServices';
+import toast from 'react-hot-toast';
 
 interface TestAttempt {
   id: number;
@@ -17,28 +19,31 @@ export default function MyTests() {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'passed' | 'failed'>('all');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadAttempts();
   }, []);
 
-  const loadAttempts = async () => {
+  const loadAttempts = async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
     try {
-      const response = await fetch('/api/content/tests/attempts/my', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      if (data.success) setAttempts(data.data);
+      const res = await contentApi.getMyTestAttempts();
+      const data = res.data;
+      if (data.success) setAttempts(data.data || []);
     } catch (error) {
       console.error('Failed to load test attempts:', error);
+      toast.error('Failed to load test history');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
+    if (mins === 0) return `${secs}s`;
     return `${mins}m ${secs}s`;
   };
 
@@ -51,131 +56,246 @@ export default function MyTests() {
   const stats = {
     total: attempts.length,
     passed: attempts.filter(a => a.passed).length,
+    failed: attempts.filter(a => !a.passed).length,
     avgScore: attempts.length > 0
       ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length)
       : 0,
-    totalTime: attempts.reduce((sum, a) => sum + a.timeSpent, 0)
+    bestScore: attempts.length > 0
+      ? Math.max(...attempts.map(a => a.score))
+      : 0,
+    totalTime: attempts.reduce((sum, a) => sum + a.timeSpent, 0),
+    passRate: attempts.length > 0
+      ? Math.round((attempts.filter(a => a.passed).length / attempts.length) * 100)
+      : 0,
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'var(--accent-green)';
+    if (score >= 60) return 'var(--accent-orange)';
+    return 'var(--accent-red)';
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading test history...</div>;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            border: '3px solid var(--border)', borderTopColor: 'var(--primary)',
+            animation: 'spin 1s linear infinite', margin: '0 auto 16px',
+          }} />
+          <p style={{ color: 'var(--text-secondary)' }}>Loading test history...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
-      <div style={{ marginBottom: 32 }}>
-        <div className="flex items-center gap-3 mb-4">
-          <ClipboardCheck className="w-8 h-8" style={{ color: 'var(--primary)' }} />
-          <h1 className="page-title" style={{ marginBottom: 0 }}>My Tests</h1>
-        </div>
-        <p className="text-muted">Track your test performance and progress</p>
-      </div>
-
-      <div className="card-grid" style={{ marginBottom: 24 }}>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--primary)' }} />
-            <span className="text-sm text-muted">Total Tests</span>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '8px 24px 24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, rgba(108,92,231,0.2), rgba(0,206,201,0.15))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ClipboardCheck size={24} style={{ color: 'var(--primary-light)' }} />
           </div>
-          <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.total}</div>
-        </div>
-
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <Award className="w-5 h-5" style={{ color: 'var(--success)' }} />
-            <span className="text-sm text-muted">Passed</span>
+          <div>
+            <h1 className="page-title" style={{ marginBottom: 0 }}>My Tests</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Track your test performance and progress</p>
           </div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--success)' }}>{stats.passed}</div>
         </div>
-
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <TrendingUp className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-            <span className="text-sm text-muted">Avg Score</span>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent)' }}>{stats.avgScore}%</div>
-        </div>
-
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <Clock className="w-5 h-5" style={{ color: 'var(--warning)' }} />
-            <span className="text-sm text-muted">Total Time</span>
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--warning)' }}>{formatTime(stats.totalTime)}</div>
-        </div>
-      </div>
-
-      <div className="flex gap-8 mb-24">
         <button
-          onClick={() => setFilter('all')}
-          className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => loadAttempts(true)}
+          disabled={refreshing}
+          className="btn btn-sm btn-secondary"
+          style={{ opacity: refreshing ? 0.5 : 1 }}
         >
-          All Tests
-        </button>
-        <button
-          onClick={() => setFilter('passed')}
-          className={`btn btn-sm ${filter === 'passed' ? 'btn-primary' : 'btn-secondary'}`}
-        >
-          Passed
-        </button>
-        <button
-          onClick={() => setFilter('failed')}
-          className={`btn btn-sm ${filter === 'failed' ? 'btn-primary' : 'btn-secondary'}`}
-        >
-          Failed
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          Refresh
         </button>
       </div>
 
+      {/* Stats Grid */}
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
+        <div className="stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <ClipboardCheck size={18} style={{ color: 'var(--primary-light)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total Tests</span>
+          </div>
+          <div className="stat-value" style={{ color: 'var(--primary-light)' }}>{stats.total}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <Award size={18} style={{ color: 'var(--accent-green)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Passed</span>
+          </div>
+          <div className="stat-value" style={{ color: 'var(--accent-green)' }}>{stats.passed}</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <TrendingUp size={18} style={{ color: 'var(--accent-cyan)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Avg Score</span>
+          </div>
+          <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>{stats.avgScore}%</div>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <Clock size={18} style={{ color: 'var(--accent-orange)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Total Time</span>
+          </div>
+          <div className="stat-value" style={{ color: 'var(--accent-orange)', fontSize: 24 }}>{formatTime(stats.totalTime)}</div>
+        </div>
+      </div>
+
+      {/* Pass Rate Progress Bar */}
+      {stats.total > 0 && (
+        <div className="card" style={{ marginBottom: 24, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BarChart3 size={16} style={{ color: 'var(--primary-light)' }} />
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Overall Pass Rate</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 18, color: getScoreColor(stats.passRate) }}>
+              {stats.passRate}%
+            </span>
+          </div>
+          <div className="progress-bar" style={{ height: 10 }}>
+            <div
+              className="progress-fill"
+              style={{
+                width: `${stats.passRate}%`,
+                background: `linear-gradient(90deg, ${getScoreColor(stats.passRate)}, var(--accent-cyan))`,
+                transition: 'width 1s ease',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12 }}>
+            <span style={{ color: 'var(--accent-green)' }}>{stats.passed} passed</span>
+            <span style={{ color: 'var(--accent-red)' }}>{stats.failed} failed</span>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {(['all', 'passed', 'failed'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            {f === 'all' && <ClipboardCheck size={14} />}
+            {f === 'passed' && <Award size={14} />}
+            {f === 'failed' && <Target size={14} />}
+            {f === 'all' ? `All Tests (${stats.total})` : f === 'passed' ? `Passed (${stats.passed})` : `Failed (${stats.failed})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Attempts List */}
       {filteredAttempts.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
-          <ClipboardCheck className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-tertiary)', width: 64, height: 64 }} />
-          <p className="text-muted">No test attempts yet</p>
+          <div style={{
+            width: 72, height: 72, borderRadius: 'var(--radius-lg)', margin: '0 auto 16px',
+            background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ClipboardCheck size={36} style={{ color: 'var(--text-muted)' }} />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            {filter !== 'all' ? `No ${filter} tests` : 'No test attempts yet'}
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+            {filter !== 'all'
+              ? 'Try selecting a different filter'
+              : 'Take a test from Content Hub to see your results here'
+            }
+          </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {filteredAttempts.map((attempt) => (
-            <div key={attempt.id} className="card">
-              <div className="flex items-start justify-between mb-16">
+          {filteredAttempts.map(attempt => (
+            <div key={attempt.id} className="card" style={{ transition: 'all 0.3s ease' }}>
+              {/* Attempt Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
-                  <h3 className="card-title" style={{ marginBottom: 4 }}>{attempt.testTitle}</h3>
-                  <div className="flex items-center gap-8 text-sm text-muted">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(attempt.createdAt).toLocaleString()}
+                  <h3 style={{ fontWeight: 600, fontSize: 16, marginBottom: 6 }}>{attempt.testTitle}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={13} style={{ color: 'var(--text-muted)' }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {new Date(attempt.createdAt).toLocaleString()}
+                    </span>
                   </div>
                 </div>
-                <span className={`badge ${attempt.passed ? 'badge-green' : 'badge-red'}`}>
-                  {attempt.passed ? 'PASSED' : 'FAILED'}
+                <span className={`badge ${attempt.passed ? 'badge-green' : 'badge-red'}`} style={{ fontSize: 12, fontWeight: 700 }}>
+                  {attempt.passed ? '✓ PASSED' : '✗ FAILED'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-                <div style={{ textAlign: 'center', padding: 12, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{attempt.score}%</div>
-                  <div className="text-sm text-muted">Score</div>
+              {/* Score Details Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div style={{
+                  textAlign: 'center', padding: 14, background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: getScoreColor(attempt.score), marginBottom: 4 }}>
+                    {attempt.score}%
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Score</div>
                 </div>
-                <div style={{ textAlign: 'center', padding: 12, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--success)' }}>
+                <div style={{
+                  textAlign: 'center', padding: 14, background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-green)', marginBottom: 4 }}>
                     {attempt.correctAnswers}/{attempt.totalQuestions}
                   </div>
-                  <div className="text-sm text-muted">Correct</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Correct</div>
                 </div>
-                <div style={{ textAlign: 'center', padding: 12, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--warning)' }}>
+                <div style={{
+                  textAlign: 'center', padding: 14, background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-orange)', marginBottom: 4 }}>
                     {formatTime(attempt.timeSpent)}
                   </div>
-                  <div className="text-sm text-muted">Time</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Time</div>
                 </div>
-                <div style={{ textAlign: 'center', padding: 12, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
+                <div style={{
+                  textAlign: 'center', padding: 14, background: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: 4 }}>
                     {Math.round((attempt.correctAnswers / attempt.totalQuestions) * 100)}%
                   </div>
-                  <div className="text-sm text-muted">Accuracy</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Accuracy</div>
+                </div>
+              </div>
+
+              {/* Score Progress */}
+              <div style={{ marginTop: 14 }}>
+                <div className="progress-bar" style={{ height: 6 }}>
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${attempt.score}%`,
+                      background: `linear-gradient(90deg, ${getScoreColor(attempt.score)}, var(--accent-cyan))`,
+                    }}
+                  />
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

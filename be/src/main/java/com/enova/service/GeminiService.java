@@ -19,13 +19,17 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class GeminiService {
 
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private final HttpClient httpClient;
+
+    public GeminiService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+    }
 
     @Value("${gemini.api-key:}")
     private String apiKey;
@@ -65,35 +69,43 @@ public class GeminiService {
         return generateText(prompt, 0.4, 384);
     }
 
-        public Optional<JsonNode> generateEmotionAnalysis(String text, String context) {
-                String prompt = "You are an empathy coach. Analyze the user's emotion from the text. "
-                                + (context != null && !context.isBlank() ? "Context: " + context + ". " : "")
-                                + "Text: " + text + ". "
-                                + "Return JSON with keys emotion, confidence, coachingTone, suggestion.";
-                return generateJson(prompt, 0.3, 256);
-        }
+    public Optional<JsonNode> generateEmotionAnalysis(String text, String context) {
+        String prompt = "You are an empathy coach. Analyze the user's emotion from the text. "
+                + (context != null && !context.isBlank() ? "Context: " + context + ". " : "")
+                + "Text: " + text + ". "
+                + "Return JSON with keys emotion, confidence, coachingTone, suggestion.";
+        return generateJson(prompt, 0.3, 256);
+    }
 
-        public Optional<JsonNode> generateContentSummary(String title, String summary, String focus) {
-                String prompt = "You are an English learning content editor. "
-                                + "Title: " + title + ". "
-                                + (summary != null && !summary.isBlank() ? "Summary: " + summary + ". " : "")
-                                + (focus != null && !focus.isBlank() ? "Focus: " + focus + ". " : "")
-                                + "Return JSON with keys summary, keyVocabulary (array of 6 words), discussionQuestions (array of 3).";
-                return generateJson(prompt, 0.4, 384);
-        }
+    public Optional<JsonNode> generateContentSummary(String title, String summary, String focus) {
+        String prompt = "You are an English learning content editor. "
+                + "Title: " + title + ". "
+                + (summary != null && !summary.isBlank() ? "Summary: " + summary + ". " : "")
+                + (focus != null && !focus.isBlank() ? "Focus: " + focus + ". " : "")
+                + "Return JSON with keys summary, keyVocabulary (array of 6 words), discussionQuestions (array of 3).";
+        return generateJson(prompt, 0.4, 384);
+    }
 
-        public Optional<JsonNode> generateContentQuizzes(String title, String summary) {
-                String prompt = "Generate 5 multiple choice questions about this content:\nTitle: " + title + "\nSummary: " + summary + "\n\n" +
-                                "Return JSON array with format: [{\"question\": \"...\", \"optionA\": \"...\", \"optionB\": \"...\", " +
-                                "\"optionC\": \"...\", \"optionD\": \"...\", \"correctAnswer\": \"A\", \"explanation\": \"...\"}]";
-                return generateJson(prompt, 0.4, 512);
-        }
+    public Optional<JsonNode> generateContentQuizzes(String title, String summary) {
+        String prompt = "Generate 5 multiple choice questions about this content:\nTitle: " + title + "\nSummary: " + summary + "\n\n" +
+                "Return JSON array with format: [{\"question\": \"...\", \"optionA\": \"...\", \"optionB\": \"...\", " +
+                "\"optionC\": \"...\", \"optionD\": \"...\", \"correctAnswer\": \"A\", \"explanation\": \"...\"}]";
+        return generateJson(prompt, 0.4, 512);
+    }
 
-        public String translateText(String text, String sourceLanguage, String targetLanguage) {
-                String prompt = "Translate the following text from " + sourceLanguage + " to " + targetLanguage + ". " +
-                                "Only return the translation, no explanations:\n\n" + text;
-                return generateText(prompt, 0.3, 512).orElse(text);
-        }
+    public String translateText(String text, String sourceLanguage, String targetLanguage) {
+        String prompt = "Translate the following text from " + sourceLanguage + " to " + targetLanguage + ". " +
+                "Only return the translation, no explanations:\n\n" + text;
+        return generateText(prompt, 0.3, 512).orElse(text);
+    }
+
+    public Optional<JsonNode> generateCareerVocabulary(String industry, int count) {
+        String prompt = "You are an English language expert. Generate " + count + " unique English vocabulary words commonly used in the '" + industry + "' industry. "
+                + "Return a JSON array of objects. Format: "
+                + "[{\"word\": \"...\", \"phonetic\": \"...\", \"partOfSpeech\": \"...\", \"meaningVi\": \"...\", \"exampleSentence\": \"...\"}] "
+                + "meaningVi must be in Vietnamese.";
+        return generateJson(prompt, 0.6, 8192);
+    }
 
     private Optional<String> generateText(String prompt, double temperature, int maxTokens) {
         if (apiKey == null || apiKey.isBlank()) return Optional.empty();
@@ -129,8 +141,8 @@ public class GeminiService {
                 return Optional.empty();
             }
 
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode textNode = root.path("candidates").path(0)
+            JsonNode rootResponse = objectMapper.readTree(response.body());
+            JsonNode textNode = rootResponse.path("candidates").path(0)
                     .path("content").path("parts").path(0).path("text");
             if (textNode.isMissingNode()) return Optional.empty();
 
@@ -140,27 +152,27 @@ public class GeminiService {
         }
     }
 
-        private Optional<JsonNode> generateJson(String prompt, double temperature, int maxTokens) {
-                Optional<String> raw = generateText(prompt, temperature, maxTokens);
-                if (raw.isEmpty()) return Optional.empty();
-                try {
-                        String text = raw.get().trim();
-                        int startObj = text.indexOf('{');
-                        int startArr = text.indexOf('[');
-                        int endObj = text.lastIndexOf('}');
-                        int endArr = text.lastIndexOf(']');
-                        
-                        int start = (startObj >= 0 && startArr >= 0) ? Math.min(startObj, startArr) : Math.max(startObj, startArr);
-                        int end = (endObj >= 0 && endArr >= 0) ? Math.max(endObj, endArr) : Math.max(endObj, endArr);
+    private Optional<JsonNode> generateJson(String prompt, double temperature, int maxTokens) {
+        Optional<String> raw = generateText(prompt, temperature, maxTokens);
+        if (raw.isEmpty()) return Optional.empty();
+        try {
+            String text = raw.get().trim();
+            int startObj = text.indexOf('{');
+            int startArr = text.indexOf('[');
+            int endObj = text.lastIndexOf('}');
+            int endArr = text.lastIndexOf(']');
 
-                        if (start >= 0 && end > start) {
-                                text = text.substring(start, end + 1);
-                        }
-                        return Optional.ofNullable(objectMapper.readTree(text));
-                } catch (Exception ex) {
-                        ObjectNode fallback = objectMapper.createObjectNode();
-                        fallback.put("summary", raw.get());
-                        return Optional.of(fallback);
-                }
+            int start = (startObj >= 0 && startArr >= 0) ? Math.min(startObj, startArr) : Math.max(startObj, startArr);
+            int end = (endObj >= 0 && endArr >= 0) ? Math.max(endObj, endArr) : Math.max(endObj, endArr);
+
+            if (start >= 0 && end > start) {
+                text = text.substring(start, end + 1);
+            }
+            return Optional.ofNullable(objectMapper.readTree(text));
+        } catch (Exception ex) {
+            ObjectNode fallback = objectMapper.createObjectNode();
+            fallback.put("summary", raw.get());
+            return Optional.of(fallback);
         }
+    }
 }

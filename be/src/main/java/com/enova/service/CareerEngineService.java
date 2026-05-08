@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class CareerEngineService {
     private final VocabularyRepository vocabularyRepository;
     private final VocabularyProgressRepository vocabProgressRepository;
     private final UserRepository userRepository;
+    private final GeminiService geminiService;
 
     public List<CareerPath> getAllCareerPaths() {
         return careerPathRepository.findAll();
@@ -113,5 +115,41 @@ public class CareerEngineService {
 
     public List<VocabularyProgress> getUserVocabularyProgress(Long userId) {
         return vocabProgressRepository.findByUserId(userId);
+    }
+
+    public void seedVocabulariesForPathAsync(Long careerPathId) {
+        CareerPath path = careerPathRepository.findById(careerPathId)
+                .orElseThrow(() -> new ResourceNotFoundException("Career path not found"));
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Generate in 5 batches of 100 to get 500 words safely
+                for (int i = 0; i < 5; i++) {
+                    com.fasterxml.jackson.databind.JsonNode json = geminiService.generateCareerVocabulary(path.getName(), 100).orElse(null);
+                    if (json != null && json.isArray()) {
+                        for (com.fasterxml.jackson.databind.JsonNode node : json) {
+                            try {
+                                Vocabulary vocab = Vocabulary.builder()
+                                        .careerPath(path)
+                                        .word(node.path("word").asText())
+                                        .phonetic(node.path("phonetic").asText())
+                                        .partOfSpeech(node.path("partOfSpeech").asText())
+                                        .meaningVi(node.path("meaningVi").asText())
+                                        .exampleSentence(node.path("exampleSentence").asText())
+                                        .difficulty(Scenario.Difficulty.INTERMEDIATE)
+                                        .frequencyRank(i * 100)
+                                        .build();
+                                vocabularyRepository.save(vocab);
+                            } catch (Exception e) {
+                                // Skip individual failures
+                            }
+                        }
+                    }
+                    Thread.sleep(2000); // Wait between batches to respect rate limits
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 }
