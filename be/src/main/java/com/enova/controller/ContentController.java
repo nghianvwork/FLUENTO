@@ -40,6 +40,14 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(items));
     }
 
+    @GetMapping("/recommended")
+    public ResponseEntity<ApiResponse<List<ContentItem>>> getRecommendedContent(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "10") int limit) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(contentService.getRecommendedContent(user.getId(), limit)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ContentItem>> getContent(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(contentService.getContentById(id)));

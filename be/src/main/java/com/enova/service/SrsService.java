@@ -4,6 +4,7 @@ import com.enova.model.User;
 import com.enova.model.Vocabulary;
 import com.enova.model.VocabularyProgress;
 import com.enova.repository.VocabularyProgressRepository;
+import com.enova.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.List;
 @Slf4j
 public class SrsService {
     private final VocabularyProgressRepository progressRepository;
+    private final UserProfileRepository profileRepository;
 
     @Transactional(readOnly = true)
     public List<VocabularyProgress> getDueReviews(User user) {
@@ -76,5 +78,9 @@ public class SrsService {
         vp.setNextReviewAt(LocalDateTime.now().plusDays(vp.getIntervalDays()));
 
         progressRepository.save(vp);
+        profileRepository.findByUserId(user.getId()).ifPresent(profile -> {
+            profile.setLastStudyDate(LocalDateTime.now());
+            profileRepository.save(profile);
+        });
     }
 }

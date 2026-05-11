@@ -25,12 +25,15 @@ public class VocabularyProgressResponse {
     
     public static VocabularyProgressResponse from(VocabularyProgress vp) {
         Vocabulary vocab = vp.getVocabulary();
+        String example = vocab.getExampleSentences() != null && !vocab.getExampleSentences().isBlank()
+            ? vocab.getExampleSentences()
+            : vocab.getExampleSentence();
         return VocabularyProgressResponse.builder()
                 .id(vp.getId())
                 .vocabularyId(vocab.getId())
                 .word(vocab.getWord())
                 .definition(vocab.getDefinition())
-                .exampleSentence(vocab.getExampleSentences())
+            .exampleSentence(example)
                 .source(vocab.getCareerPath() != null ? vocab.getCareerPath().getName() : null)
                 .masteryLevel(vp.getMasteryLevel())
                 .nextReviewAt(vp.getNextReviewAt())

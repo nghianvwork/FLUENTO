@@ -17,18 +17,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: (data) => {
     const normalized = { ...data, role: normalizeRole(data.role || '') };
     localStorage.setItem('enova_token', data.token);
+    localStorage.setItem('enova_refresh_token', data.refreshToken);
     localStorage.setItem('enova_user', JSON.stringify(normalized));
     set({ user: normalized, isAuthenticated: true, isHydrated: true });
   },
   logout: () => {
     localStorage.removeItem('enova_token');
+    localStorage.removeItem('enova_refresh_token');
     localStorage.removeItem('enova_user');
     set({ user: null, isAuthenticated: false, isHydrated: true });
   },
   loadFromStorage: () => {
     const stored = localStorage.getItem('enova_user');
     const token = localStorage.getItem('enova_token');
-    if (stored && token) {
+    const refreshToken = localStorage.getItem('enova_refresh_token');
+    if (stored && token && refreshToken) {
       const parsed = JSON.parse(stored);
       set({ user: { ...parsed, role: normalizeRole(parsed.role || '') }, isAuthenticated: true, isHydrated: true });
       return;

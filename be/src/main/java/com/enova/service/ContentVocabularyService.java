@@ -5,8 +5,12 @@ import com.enova.dto.response.ContentVocabularyResponse;
 import com.enova.model.ContentItem;
 import com.enova.model.ContentVocabulary;
 import com.enova.model.User;
+import com.enova.model.Vocabulary;
+import com.enova.model.VocabularyProgress;
 import com.enova.repository.ContentVocabularyRepository;
 import com.enova.repository.UserRepository;
+import com.enova.repository.VocabularyProgressRepository;
+import com.enova.repository.VocabularyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +25,8 @@ public class ContentVocabularyService {
     private final ContentVocabularyRepository vocabularyRepository;
     private final ContentService contentService;
     private final UserRepository userRepository;
+    private final VocabularyRepository vocabRepository;
+    private final VocabularyProgressRepository vocabProgressRepository;
 
     public List<ContentVocabularyResponse> getUserVocabulary(Long userId, Long contentId) {
         List<ContentVocabulary> vocabs = contentId != null
@@ -47,7 +53,9 @@ public class ContentVocabularyService {
         vocab.setTimestampSeconds(request.getTimestampSeconds());
         vocab.setCreatedAt(LocalDateTime.now());
 
-        return toResponse(vocabularyRepository.save(vocab));
+        ContentVocabulary saved = vocabularyRepository.save(vocab);
+        ensureVocabularyProgress(user, saved);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -57,6 +65,28 @@ public class ContentVocabularyService {
             throw new RuntimeException("Unauthorized");
         }
         vocabularyRepository.delete(vocab);
+    }
+
+    private void ensureVocabularyProgress(User user, ContentVocabulary vocab) {
+        String word = vocab.getWord().trim();
+        Vocabulary stored = vocabRepository.findByWordIgnoreCase(word)
+                .orElseGet(() -> vocabRepository.save(Vocabulary.builder()
+                        .word(word)
+                        .definition(vocab.getDefinition())
+                        .exampleSentence(vocab.getExampleSentence())
+                        .build()));
+
+        vocabProgressRepository.findByUserIdAndVocabularyId(user.getId(), stored.getId())
+                .orElseGet(() -> vocabProgressRepository.save(VocabularyProgress.builder()
+                        .user(user)
+                        .vocabulary(stored)
+                        .masteryLevel(0)
+                        .easeFactor(2.5)
+                        .intervalDays(1)
+                        .reviewCount(0)
+                        .correctCount(0)
+                        .nextReviewAt(LocalDateTime.now())
+                        .build()));
     }
 
     private ContentVocabularyResponse toResponse(ContentVocabulary vocab) {

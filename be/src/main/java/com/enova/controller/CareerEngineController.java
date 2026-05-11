@@ -46,6 +46,12 @@ public class CareerEngineController {
         return ResponseEntity.ok(ApiResponse.success("Seeding started in background for 500 words."));
     }
 
+    @PostMapping("/paths/{id}/seed-lessons")
+    public ResponseEntity<ApiResponse<String>> seedLessons(@PathVariable Long id) {
+        careerEngineService.seedLessonsForPathAsync(id);
+        return ResponseEntity.ok(ApiResponse.success("Lesson seeding started in background."));
+    }
+
     @PostMapping("/lessons/{lessonId}/start")
     public ResponseEntity<ApiResponse<LessonProgress>> startLesson(
             @AuthenticationPrincipal UserDetails userDetails, @PathVariable Long lessonId) {

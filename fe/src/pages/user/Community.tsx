@@ -28,15 +28,9 @@ export default function Community() {
         setClubs(clubsRes.data.data);
         setEvents(eventsRes.data.data);
       } catch {
-        setClubs([
-          { id: 1, name: 'Tech Builders Club', members: 1240, focus: 'Product + engineering', level: 'B1-B2', joined: false },
-          { id: 2, name: 'Marketing Storytellers', members: 780, focus: 'Narrative + pitch', level: 'A2-B1', joined: false },
-          { id: 3, name: 'Finance Talkroom', members: 512, focus: 'Business English', level: 'B2-C1', joined: false },
-        ]);
-        setEvents([
-          { id: 1, title: 'Global Demo Day', timeLabel: 'Thu 20:00', host: 'Coach Anna', reserved: 24, capacity: 40, reservedByUser: false },
-          { id: 2, title: 'Interview Challenge', timeLabel: 'Sat 10:00', host: 'AI Moderator', reserved: 18, capacity: 30, reservedByUser: false },
-        ]);
+        toast.error('Khong tai duoc du lieu cong dong');
+        setClubs([]);
+        setEvents([]);
       } finally {
         setLoading(false);
       }

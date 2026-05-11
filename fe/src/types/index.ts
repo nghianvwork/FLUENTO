@@ -146,6 +146,16 @@ export interface SpeakingRoom {
   currentParticipants: number;
 }
 
+export interface SpeakingRoomHistory {
+  id: number;
+  roomId: number;
+  roomTitle: string;
+  joinedAt: string;
+  leftAt?: string;
+  durationSeconds: number;
+  speakingTimeSeconds: number;
+}
+
 export interface CommunityClub {
   id: number;
   name: string;
@@ -198,6 +208,15 @@ export interface CommunityEvent {
   reserved: number;
   capacity: number;
   reservedByUser: boolean;
+}
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface CommunityMatch {

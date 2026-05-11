@@ -15,7 +15,8 @@ export default function ContentFeed() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState<'all' | 'bookmarked'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'bookmarked' | 'recommended'>('all');
+  const [loading, setLoading] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryData, setSummaryData] = useState<{ title: string; summary: string; vocab: string[]; questions: string[] } | null>(null);
@@ -25,30 +26,42 @@ export default function ContentFeed() {
     loadBookmarks();
   }, [filter, viewMode]);
 
-  const loadContent = () => {
-    if (viewMode === 'bookmarked') {
-      contentApi.getBookmarks().then(res => {
+  const loadContent = async () => {
+    setLoading(true);
+    try {
+      if (viewMode === 'bookmarked') {
+        const res = await contentApi.getBookmarks();
         const bookmarkedItems = res.data.data.map((b: any) => b.content);
         setItems(filter === 'ALL' ? bookmarkedItems : bookmarkedItems.filter((i: ContentItem) => i.topic === filter));
-      });
-    } else {
-      contentApi.getAll(filter === 'ALL' ? undefined : filter).then(res => setItems(res.data.data)).catch(() => {
-        setItems([
-          { id: 1, title: 'How to Ace Your Tech Interview', sourceUrl: '#', sourceType: 'YOUTUBE', thumbnailUrl: '', durationSeconds: 720, difficulty: 'INTERMEDIATE', topic: 'TECHNOLOGY', summary: 'Tips for technical interviews at top companies', tags: 'interview,tech' },
-          { id: 2, title: 'The Future of Remote Work', sourceUrl: '#', sourceType: 'YOUTUBE', thumbnailUrl: '', durationSeconds: 540, difficulty: 'INTERMEDIATE', topic: 'BUSINESS', summary: 'How remote work shapes business', tags: 'remote,work' },
-          { id: 3, title: 'TED Talk: The Power of Vulnerability', sourceUrl: '#', sourceType: 'YOUTUBE', thumbnailUrl: '', durationSeconds: 1200, difficulty: 'ADVANCED', topic: 'PERSONAL_DEVELOPMENT', summary: 'Why vulnerability is courage', tags: 'ted,growth' },
-          { id: 4, title: 'BBC: Global Economy Update 2026', sourceUrl: '#', sourceType: 'ARTICLE', thumbnailUrl: '', durationSeconds: 300, difficulty: 'ADVANCED', topic: 'FINANCE', summary: 'Global economic trends analysis', tags: 'economy,finance' },
-          { id: 5, title: 'English Learning Tips Podcast', sourceUrl: '#', sourceType: 'PODCAST', thumbnailUrl: '', durationSeconds: 1800, difficulty: 'BEGINNER', topic: 'EDUCATION', summary: 'Practical tips for daily English', tags: 'podcast,tips' },
-        ]);
-      });
+        return;
+      }
+
+      if (viewMode === 'recommended') {
+        const res = await contentApi.getRecommended(12);
+        const recommendedItems = res.data.data;
+        setItems(filter === 'ALL' ? recommendedItems : recommendedItems.filter((i: ContentItem) => i.topic === filter));
+        return;
+      }
+
+      const res = await contentApi.getAll(filter === 'ALL' ? undefined : filter);
+      setItems(res.data.data);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Khong tai duoc noi dung');
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadBookmarks = () => {
-    contentApi.getBookmarks().then(res => {
+  const loadBookmarks = async () => {
+    try {
+      const res = await contentApi.getBookmarks();
       const ids = new Set<number>(res.data.data.map((b: any) => b.content.id));
       setBookmarks(ids);
-    });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Khong tai duoc bookmark');
+      setBookmarks(new Set());
+    }
   };
 
   const formatDuration = (s: number) => `${Math.floor(s / 60)} phút`;
@@ -90,6 +103,8 @@ export default function ContentFeed() {
       <div className="flex gap-8 mb-16">
         <button className={`btn btn-sm ${viewMode === 'all' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setViewMode('all')}>Tất cả</button>
+        <button className={`btn btn-sm ${viewMode === 'recommended' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setViewMode('recommended')}><Sparkles size={14} /> Gợi ý cho bạn</button>
         <button className={`btn btn-sm ${viewMode === 'bookmarked' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setViewMode('bookmarked')}><Bookmark size={14} /> Đã lưu</button>
         <button className="btn btn-sm btn-secondary" onClick={() => navigate('/app/content/learning-path')}>
@@ -117,6 +132,16 @@ export default function ContentFeed() {
       </div>
 
       <div className="card-grid">
+        {loading && (
+          <div className="text-center text-muted" style={{ padding: 24, gridColumn: '1 / -1' }}>
+            Dang tai noi dung...
+          </div>
+        )}
+        {items.length === 0 && viewMode === 'recommended' && (
+          <div className="text-center text-muted" style={{ padding: 24, gridColumn: '1 / -1' }}>
+            Chua co goi y phu hop. Hay hoc them noi dung de he thong de xuat tot hon.
+          </div>
+        )}
         {items.map(item => (
           <div key={item.id} className="card" style={{ cursor: 'pointer', position: 'relative' }}>
             <button

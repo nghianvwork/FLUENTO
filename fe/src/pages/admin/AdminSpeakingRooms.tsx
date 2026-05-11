@@ -30,8 +30,8 @@ export default function AdminSpeakingRooms() {
   });
 
   useEffect(() => {
-    adminApi.getRooms()
-      .then((res) => setRooms(res.data.data))
+    adminApi.getSpeakingRooms()
+      .then((res: any) => setRooms(res.data.data))
       .catch(() => setRooms(fallbackRooms));
   }, []);
 

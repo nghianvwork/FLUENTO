@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { speakingApi } from '../../services/apiServices';
 import { useAuthStore } from '../../stores/authStore';
-import { SpeakingRoom } from '../../types';
+import { SpeakingRoom, SpeakingRoomHistory } from '../../types';
 import { Mic, MicOff, PhoneOff, Users, Activity } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -54,6 +54,8 @@ export default function SpeakingRoomPage() {
   const [connected, setConnected] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [status, setStatus] = useState('Idle');
+  const [history, setHistory] = useState<SpeakingRoomHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const myId = useMemo(() => user?.userId ?? Math.floor(Math.random() * 1_000_000_000), [user?.userId]);
   const clientRef = useRef<Client | null>(null);
@@ -67,6 +69,18 @@ export default function SpeakingRoomPage() {
         setRoom(found || null);
       })
       .catch(() => setRoom(null));
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    setHistoryLoading(true);
+    speakingApi.getHistory(roomId)
+      .then((res) => setHistory(res.data.data || []))
+      .catch(() => {
+        toast.error('Khong tai duoc lich su phong');
+        setHistory([]);
+      })
+      .finally(() => setHistoryLoading(false));
   }, [roomId]);
 
   useEffect(() => {
@@ -236,6 +250,13 @@ export default function SpeakingRoomPage() {
     setStatus('Idle');
   };
 
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    if (minutes <= 0) return `${rest}s`;
+    return `${minutes}m ${rest}s`;
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -275,6 +296,33 @@ export default function SpeakingRoomPage() {
         ))}
         {!localStream && (
           <div className="card text-muted" style={{ padding: 32 }}>Click "Join with Mic" to connect.</div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-title" style={{ marginBottom: 12 }}>Lich su tham gia</div>
+        {historyLoading ? (
+          <div className="text-muted" style={{ padding: 16 }}>Dang tai lich su...</div>
+        ) : history.length === 0 ? (
+          <div className="text-muted" style={{ padding: 16 }}>Chua co lich su trong phong nay.</div>
+        ) : (
+          <div className="flex flex-col gap-12">
+            {history.map((entry) => (
+              <div key={entry.id} className="card" style={{ background: 'var(--bg-tertiary)' }}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{entry.roomTitle}</div>
+                    <div className="text-sm text-muted">
+                      {new Date(entry.joinedAt).toLocaleString('vi-VN')} - {entry.leftAt ? new Date(entry.leftAt).toLocaleString('vi-VN') : 'Dang tham gia'}
+                    </div>
+                  </div>
+                  <div className="pill pill-cyan" style={{ fontSize: 12 }}>
+                    {formatDuration(entry.durationSeconds)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

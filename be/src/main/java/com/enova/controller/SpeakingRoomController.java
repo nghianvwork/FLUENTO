@@ -1,6 +1,7 @@
 package com.enova.controller;
 
 import com.enova.dto.response.ApiResponse;
+import com.enova.dto.response.SpeakingRoomHistoryResponse;
 import com.enova.model.*;
 import com.enova.service.SpeakingRoomService;
 import com.enova.service.UserService;
@@ -37,5 +38,27 @@ public class SpeakingRoomController {
         User user = userService.getUserByEmail(userDetails.getUsername());
         speakingRoomService.leaveRoom(roomId, user.getId());
         return ResponseEntity.ok(ApiResponse.success("Left room successfully"));
+    }
+
+    @GetMapping("/rooms/{roomId}/history")
+    public ResponseEntity<ApiResponse<List<SpeakingRoomHistoryResponse>>> getRoomHistory(
+            @AuthenticationPrincipal UserDetails userDetails, @PathVariable Long roomId) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        List<SpeakingRoomHistoryResponse> history = speakingRoomService.getRoomHistory(roomId, user.getId())
+                .stream()
+                .map(SpeakingRoomHistoryResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<SpeakingRoomHistoryResponse>>> getMyHistory(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        List<SpeakingRoomHistoryResponse> history = speakingRoomService.getUserHistory(user.getId())
+                .stream()
+                .map(SpeakingRoomHistoryResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(history));
     }
 }

@@ -15,13 +15,56 @@ export default function VocabularyMap() {
 
   useEffect(() => {
     careerApi.getVocabulary(Number(id)).then(res => setVocabs(res.data.data)).catch(() => {
-      setVocabs([
-        { id: 1, word: 'deploy', definition: 'To release software to production', pronunciationIpa: '/dɪˈplɔɪ/', exampleSentences: '["We need to deploy by Friday."]', difficulty: 'BEGINNER', frequencyRank: 1 },
-        { id: 2, word: 'refactor', definition: 'To restructure code without changing behavior', pronunciationIpa: '/riːˈfæktər/', exampleSentences: '["Let\'s refactor this module."]', difficulty: 'INTERMEDIATE', frequencyRank: 2 },
-        { id: 3, word: 'scalability', definition: 'Ability to handle growing workload', pronunciationIpa: '/ˌskeɪləˈbɪlɪti/', exampleSentences: '["Consider scalability in design."]', difficulty: 'INTERMEDIATE', frequencyRank: 3 },
-        { id: 4, word: 'debugging', definition: 'Finding and fixing software errors', pronunciationIpa: '/diːˈbʌɡɪŋ/', exampleSentences: '["Debugging took hours."]', difficulty: 'BEGINNER', frequencyRank: 4 },
-        { id: 5, word: 'API', definition: 'Application Programming Interface', pronunciationIpa: '/ˌeɪpiːˈaɪ/', exampleSentences: '["The REST API handles communication."]', difficulty: 'BEGINNER', frequencyRank: 5 },
-      ]);
+      const industryId = Number(id);
+      let mockVocabs: Vocabulary[] = [];
+      
+      switch(industryId) {
+        case 1: // IT
+          mockVocabs = [
+            { id: 1, word: 'deploy', definition: 'To release software to production', pronunciationIpa: '/dɪˈplɔɪ/', exampleSentences: '["We need to deploy by Friday."]', difficulty: 'BEGINNER', frequencyRank: 1 },
+            { id: 2, word: 'refactor', definition: 'To restructure code without changing behavior', pronunciationIpa: '/riːˈfæktər/', exampleSentences: '["Let\'s refactor this module."]', difficulty: 'INTERMEDIATE', frequencyRank: 2 },
+            { id: 3, word: 'scalability', definition: 'Ability to handle growing workload', pronunciationIpa: '/ˌskeɪləˈbɪlɪti/', exampleSentences: '["Consider scalability in design."]', difficulty: 'INTERMEDIATE', frequencyRank: 3 },
+            { id: 4, word: 'debugging', definition: 'Finding and fixing software errors', pronunciationIpa: '/diːˈbʌɡɪŋ/', exampleSentences: '["Debugging took hours."]', difficulty: 'BEGINNER', frequencyRank: 4 },
+            { id: 5, word: 'API', definition: 'Application Programming Interface', pronunciationIpa: '/ˌeɪpiːˈaɪ/', exampleSentences: '["The REST API handles communication."]', difficulty: 'BEGINNER', frequencyRank: 5 },
+          ];
+          break;
+        case 2: // Marketing
+          mockVocabs = [
+            { id: 201, word: 'branding', definition: 'The process of creating a unique name and image for a product', pronunciationIpa: '/ˈbrændɪŋ/', exampleSentences: '["Consistent branding is key to recognition."]', difficulty: 'BEGINNER', frequencyRank: 1 },
+            { id: 202, word: 'engagement', definition: 'The level of interaction that people have with a brand', pronunciationIpa: '/ɪnˈɡeɪdʒmənt/', exampleSentences: '["Social media engagement is up by 20%."]', difficulty: 'INTERMEDIATE', frequencyRank: 2 },
+            { id: 203, word: 'conversion', definition: 'The process of turning a visitor into a customer', pronunciationIpa: '/kənˈvɜːrʒn/', exampleSentences: '["Our conversion rate optimized last month."]', difficulty: 'INTERMEDIATE', frequencyRank: 3 },
+            { id: 204, word: 'analytics', definition: 'The systematic computational analysis of data or statistics', pronunciationIpa: '/ˌænəˈlɪtɪks/', exampleSentences: '["Check the marketing analytics for trends."]', difficulty: 'BEGINNER', frequencyRank: 4 },
+            { id: 205, word: 'SEO', definition: 'Search Engine Optimization', pronunciationIpa: '/ˌes iː ˈəʊ/', exampleSentences: '["We need to improve our SEO ranking."]', difficulty: 'BEGINNER', frequencyRank: 5 },
+          ];
+          break;
+        case 3: // Finance
+          mockVocabs = [
+            { id: 301, word: 'asset', definition: 'A useful or valuable thing, person, or quality', pronunciationIpa: '/ˈæset/', exampleSentences: '["The company\'s assets include real estate."]', difficulty: 'BEGINNER', frequencyRank: 1 },
+            { id: 302, word: 'liability', definition: 'The state of being responsible for something, especially by law', pronunciationIpa: '/ˌlaɪəˈbɪləti/', exampleSentences: '["Total liabilities decreased this quarter."]', difficulty: 'INTERMEDIATE', frequencyRank: 2 },
+            { id: 303, word: 'liquidity', definition: 'The availability of liquid assets to a market or company', pronunciationIpa: '/lɪˈkwɪdəti/', exampleSentences: '["The bank has high liquidity."]', difficulty: 'INTERMEDIATE', frequencyRank: 3 },
+            { id: 304, word: 'portfolio', definition: 'A range of investments held by a person or organization', pronunciationIpa: '/pɔːrtˈfəʊliəʊ/', exampleSentences: '["Diversify your investment portfolio."]', difficulty: 'BEGINNER', frequencyRank: 4 },
+            { id: 305, word: 'dividend', definition: 'A sum of money paid regularly by a company to its shareholders', pronunciationIpa: '/ˈdɪvɪdend/', exampleSentences: '["Shareholders received a high dividend."]', difficulty: 'BEGINNER', frequencyRank: 5 },
+          ];
+          break;
+        case 4: // Healthcare
+          mockVocabs = [
+            { id: 401, word: 'diagnosis', definition: 'The identification of the nature of an illness', pronunciationIpa: '/ˌdaɪəɡˈnəʊsɪs/', exampleSentences: '["The doctor confirmed the diagnosis."]', difficulty: 'BEGINNER', frequencyRank: 1 },
+            { id: 402, word: 'prognosis', definition: 'The likely course of a disease or ailment', pronunciationIpa: '/prɒɡˈnəʊsɪs/', exampleSentences: '["The prognosis for recovery is good."]', difficulty: 'INTERMEDIATE', frequencyRank: 2 },
+            { id: 403, word: 'treatment', definition: 'Medical care given to a patient for an illness or injury', pronunciationIpa: '/ˈtriːtmənt/', exampleSentences: '["New treatment options are available."]', difficulty: 'BEGINNER', frequencyRank: 3 },
+            { id: 404, word: 'therapy', definition: 'Treatment intended to relieve or heal a disorder', pronunciationIpa: '/ˈθerəpi/', exampleSentences: '["Physical therapy helped his back pain."]', difficulty: 'BEGINNER', frequencyRank: 4 },
+            { id: 405, word: 'acute', definition: 'A disease or condition with a rapid onset and short duration', pronunciationIpa: '/əˈkjuːt/', exampleSentences: '["He was diagnosed with acute pneumonia."]', difficulty: 'INTERMEDIATE', frequencyRank: 5 },
+          ];
+          break;
+        default:
+          mockVocabs = [
+            { id: 991, word: 'logistics', definition: 'The detailed coordination of a complex operation', pronunciationIpa: '/ləˈdʒɪstɪks/', exampleSentences: '["The logistics of the move were complex."]', difficulty: 'BEGINNER', frequencyRank: 1 },
+            { id: 992, word: 'inventory', definition: 'A complete list of items such as property, goods in stock', pronunciationIpa: '/ˈɪnvəntri/', exampleSentences: '["We need to check the inventory levels."]', difficulty: 'BEGINNER', frequencyRank: 2 },
+            { id: 993, word: 'dropshipping', definition: 'A retail fulfillment method where a store doesn\'t keep products in stock', pronunciationIpa: '/ˈdrɒpʃɪpɪŋ/', exampleSentences: '["He started a dropshipping business."]', difficulty: 'INTERMEDIATE', frequencyRank: 3 },
+            { id: 994, word: 'procurement', definition: 'The action of obtaining or procuring something', pronunciationIpa: '/prəˈkjʊərmənt/', exampleSentences: '["Government procurement rules are strict."]', difficulty: 'INTERMEDIATE', frequencyRank: 4 },
+            { id: 995, word: 'checkout', definition: 'The place where one pays in a store', pronunciationIpa: '/ˈtʃekaʊt/', exampleSentences: '["Please proceed to the checkout."]', difficulty: 'BEGINNER', frequencyRank: 5 },
+          ];
+      }
+      setVocabs(mockVocabs);
     });
   }, [id]);
 

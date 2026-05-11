@@ -165,6 +165,7 @@ public class RoleplayService {
         if (profile != null) {
             profile.setTotalXp(profile.getTotalXp() + session.getScore());
             profile.setTotalRoleplayMinutes(profile.getTotalRoleplayMinutes() + (session.getDurationSeconds() != null ? session.getDurationSeconds() / 60 : 5));
+            profile.setLastStudyDate(LocalDateTime.now());
             profileRepository.save(profile);
         }
 

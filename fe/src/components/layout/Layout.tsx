@@ -1,9 +1,11 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { authApi, notificationApi } from '../../services/apiServices';
 import { useAuthStore } from '../../stores/authStore';
 import {
   LayoutDashboard, MessageSquare, Briefcase, Mic, BookOpen,
   Users, BarChart3, User, LogOut, Sparkles, Trophy, Calendar, Target,
-  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck
+  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck, Bell
 } from 'lucide-react';
 
 const navSections = [
@@ -40,6 +42,7 @@ const navSections = [
       { path: '/app/challenges', icon: Target, label: 'Challenges' },
       { path: '/app/achievements', icon: Trophy, label: 'Achievements' },
       { path: '/app/planner', icon: Calendar, label: 'Learning Planner' },
+      { path: '/app/notifications', icon: Bell, label: 'Notifications' },
       { path: '/app/payment', icon: CreditCard, label: 'Billing' },
       { path: '/app/profile', icon: User, label: 'Profile' },
     ],
@@ -69,12 +72,53 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const [unreadCount, setUnreadCount] = useState(0);
   const role = (user?.role || '').toUpperCase();
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ROLE_ADMIN' || role === 'ROLE_SUPER_ADMIN';
   const isActive = (path: string) => (path === '/app' ? location.pathname === '/app' : location.pathname.startsWith(path));
   const isAdminRoute = location.pathname.startsWith('/app/admin');
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  useEffect(() => {
+    let isMounted = true;
+    const loadUnread = async () => {
+      try {
+        const res = await notificationApi.getUnreadCount();
+        if (isMounted) setUnreadCount(res.data.data || 0);
+      } catch {
+        if (isMounted) setUnreadCount(0);
+      }
+    };
+    loadUnread();
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname]);
+
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem('enova_refresh_token');
+    try {
+      if (refreshToken) {
+        await authApi.logout(refreshToken);
+      }
+    } catch {
+      // ignore logout errors
+    } finally {
+      logout();
+      navigate('/');
+    }
+  };
+
+  const renderNavLabel = (label: string, path: string) => {
+    if (path !== '/app/notifications' || unreadCount <= 0) {
+      return label;
+    }
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{label}</span>
+        <span className="pill pill-orange" style={{ fontSize: 11, padding: '2px 6px' }}>{unreadCount}</span>
+      </span>
+    );
+  };
 
   return (
     <div className="app-layout">
@@ -92,7 +136,7 @@ export default function Layout() {
                   onClick={() => navigate(item.path)}
                 >
                   <item.icon size={20} />
-                  {item.label}
+                  {renderNavLabel(item.label, item.path)}
                 </button>
               ))}
             </div>

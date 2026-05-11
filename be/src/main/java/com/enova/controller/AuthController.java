@@ -1,6 +1,8 @@
 package com.enova.controller;
 
 import com.enova.dto.request.LoginRequest;
+import com.enova.dto.request.LogoutRequest;
+import com.enova.dto.request.RefreshTokenRequest;
 import com.enova.dto.request.RegisterRequest;
 import com.enova.dto.response.ApiResponse;
 import com.enova.dto.response.AuthResponse;
@@ -9,8 +11,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,7 +29,13 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@RequestBody Map<String, String> request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.refreshToken(request.get("refreshToken"))));
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.refreshToken(request.getRefreshToken())));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
 }

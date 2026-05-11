@@ -27,45 +27,23 @@ export default function DailyLesson() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Fallback Mock Lesson covering all 4 skills
-    const mockLesson: LessonBlock[] = [
-      {
-        type: 'READING',
-        prompt: 'Choose the correct translation for "Tôi là kỹ sư phần mềm":',
-        options: ['I am a doctor', 'I am a software engineer', 'I like software', 'I am coding'],
-        answer: 'I am a software engineer'
-      },
-      {
-        type: 'LISTENING',
-        prompt: 'Listen and type exactly what you hear:',
-        audioText: 'We need to deploy the application tomorrow.',
-        answer: 'We need to deploy the application tomorrow.'
-      },
-      {
-        type: 'WRITING',
-        prompt: 'Translate this to English: "Chúng tôi đang tối ưu hóa hệ thống."',
-        answer: 'We are optimizing the system.'
-      },
-      {
-        type: 'SPEAKING',
-        prompt: 'Read the following sentence aloud:',
-        answer: 'The scalable architecture handles high traffic.'
-      }
-    ];
-
-    // Attempt to fetch from backend, but fallback to mock for demonstration
-    careerApi.getLessons(Number(id)).then((res) => {
-      const dbLessons = res.data.data;
-      if (dbLessons && dbLessons.length > 0 && dbLessons[0].contentJson) {
-        setBlocks(JSON.parse(dbLessons[0].contentJson));
-      } else {
-        setBlocks(mockLesson);
-      }
-    }).catch(() => {
-      setBlocks(mockLesson);
-    }).finally(() => {
-      setLoading(false);
-    });
+    careerApi.getLessons(Number(id))
+      .then((res) => {
+        const dbLessons = res.data.data;
+        if (dbLessons && dbLessons.length > 0 && dbLessons[0].contentJson) {
+          setBlocks(JSON.parse(dbLessons[0].contentJson));
+        } else {
+          setBlocks([]);
+          toast.error('Khong co noi dung bai hoc');
+        }
+      })
+      .catch(() => {
+        setBlocks([]);
+        toast.error('Khong tai duoc bai hoc');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // Initialize Web Speech API
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {

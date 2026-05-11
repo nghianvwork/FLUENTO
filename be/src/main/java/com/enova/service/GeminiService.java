@@ -102,9 +102,16 @@ public class GeminiService {
     public Optional<JsonNode> generateCareerVocabulary(String industry, int count) {
         String prompt = "You are an English language expert. Generate " + count + " unique English vocabulary words commonly used in the '" + industry + "' industry. "
                 + "Return a JSON array of objects. Format: "
-                + "[{\"word\": \"...\", \"phonetic\": \"...\", \"partOfSpeech\": \"...\", \"meaningVi\": \"...\", \"exampleSentence\": \"...\"}] "
-                + "meaningVi must be in Vietnamese.";
+                + "[{\"word\": \"...\", \"phonetic\": \"...\", \"partOfSpeech\": \"...\", \"definition\": \"...\", \"meaningVi\": \"...\", \"exampleSentences\": [\"sentence 1\", \"sentence 2\"]}] "
+                + "meaningVi must be in Vietnamese. definition must be in English.";
         return generateJson(prompt, 0.6, 8192);
+    }
+
+    public Optional<JsonNode> generateCareerLesson(String industry, String topic) {
+        String prompt = "Generate a structured English lesson for the '" + industry + "' industry about '" + topic + "'. "
+                + "Return JSON with format: {\"title\": \"...\", \"words\": [\"word1\", \"word2\", ...], \"exercises\": [{\"type\": \"match\", \"question\": \"...\", \"options\": [...]}, {\"type\": \"fill_blank\", \"question\": \"...\", \"answer\": \"...\"}]}. "
+                + "Include 5 key words and 5 exercises.";
+        return generateJson(prompt, 0.5, 2048);
     }
 
     private Optional<String> generateText(String prompt, double temperature, int maxTokens) {

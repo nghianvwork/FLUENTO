@@ -6,15 +6,20 @@ import { Flame, BookOpen, MessageSquare, Target, TrendingUp, Zap, ArrowRight, Cl
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    userApi.getDashboard().then(res => setData(res.data.data)).catch(() => {
-      setData({ streakCount: 7, totalXp: 2450, wordsLearned: 156, lessonsCompleted: 23, roleplayMinutes: 180, cefrLevel: 'B1', dailyGoalMinutes: 15, todayMinutes: 8, todayProgress: 0.53 });
-    });
+    userApi.getDashboard()
+      .then(res => setData(res.data.data))
+      .catch(() => {
+        setData(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!data) return <div className="text-center text-muted" style={{ padding: 100 }}>Loading...</div>;
+  if (loading) return <div className="text-center text-muted" style={{ padding: 100 }}>Loading...</div>;
+  if (!data) return <div className="text-center text-muted" style={{ padding: 100 }}>Khong tai duoc dashboard.</div>;
 
   const quickActions = [
     { icon: MessageSquare, label: 'AI Roleplay', desc: 'Luyện hội thoại với AI', path: '/app/roleplay', color: 'var(--primary)' },

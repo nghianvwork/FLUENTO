@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { authApi } from '../../services/apiServices';
 import { useAuthStore } from '../../stores/authStore';
 import { Sparkles, MessageSquare, Briefcase, Mic, BookOpen, Users, BarChart3, ArrowRight, Zap, Globe } from 'lucide-react';
 
@@ -22,9 +23,18 @@ export default function Landing() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem('enova_refresh_token');
+    try {
+      if (refreshToken) {
+        await authApi.logout(refreshToken);
+      }
+    } catch {
+      // ignore logout errors
+    } finally {
+      logout();
+      navigate('/');
+    }
   };
 
   return (

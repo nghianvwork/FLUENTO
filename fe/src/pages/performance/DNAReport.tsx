@@ -7,27 +7,21 @@ import toast from 'react-hot-toast';
 export default function DNAReport() {
   const [report, setReport] = useState<PerformanceReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   const generateReport = async () => {
     setLoading(true);
+    setError(false);
     try {
       const res = await performanceApi.generateReport();
       setReport(res.data.data);
+      toast.success('Report generated!');
     } catch {
-      setReport({
-        id: 1, reportPeriodStart: '2026-04-28', reportPeriodEnd: '2026-05-05', overallScore: 78,
-        grammarAnalysisJson: '{"accuracy":82,"weakAreas":["present perfect","articles"],"strongAreas":["simple past","comparatives"]}',
-        vocabularyAnalysisJson: '{"wordsLearned":24,"retention":85,"topCategories":["business","technology"]}',
-        pronunciationAnalysisJson: '{"overallScore":75,"weakSounds":["th","r"],"improvement":8}',
-        strengthMapJson: '{"speaking":72,"listening":85,"reading":80,"writing":68}',
-        errorPatternsJson: '[{"pattern":"Subject-verb agreement","frequency":3},{"pattern":"Article usage","frequency":5}]',
-        peerBenchmarkJson: '{"percentile":72,"avgScore":70}',
-        cefrEstimate: 'B1', recommendationsJson: '["Practice present perfect","Focus on articles","Join speaking rooms 3x/week"]',
-        createdAt: new Date().toISOString()
-      });
+      setError(true);
+      toast.error('Khong the tao report');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    toast.success('Report generated!');
   };
 
   useEffect(() => { generateReport(); }, []);
@@ -42,7 +36,8 @@ export default function DNAReport() {
     </div>
   );
 
-  if (!report) return <div className="text-center text-muted" style={{ padding: 100 }}>Loading...</div>;
+  if (loading) return <div className="text-center text-muted" style={{ padding: 100 }}>Loading...</div>;
+  if (!report) return <div className="text-center text-muted" style={{ padding: 100 }}>{error ? 'Khong co du lieu report.' : 'Loading...'}</div>;
 
   const strengths = JSON.parse(report.strengthMapJson);
   const grammar = JSON.parse(report.grammarAnalysisJson);

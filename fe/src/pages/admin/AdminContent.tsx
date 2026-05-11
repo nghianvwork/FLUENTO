@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '../../services/apiServices';
 import { AdminContentItem } from '../../types';
-import { Archive, Filter, Plus, Upload, Pencil, Trash2 } from 'lucide-react';
+import { Archive, Filter, Plus, Upload, Pencil, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../../components/common/Modal';
 
@@ -169,6 +169,16 @@ export default function AdminContent() {
                 <td>{item.updatedAt}</td>
                 <td>
                   <div className="flex gap-8">
+                    <button className="btn btn-sm btn-secondary" onClick={async () => {
+                      try {
+                        await adminApi.generateQuiz(item.id);
+                        toast.success('AI đang tạo câu hỏi cho nội dung này. Vui lòng kiểm tra lại sau ít phút!');
+                      } catch {
+                        toast.error('Không thể tạo câu hỏi tự động.');
+                      }
+                    }} title="Generate AI Quiz">
+                      <Sparkles size={14} />
+                    </button>
                     <button className="btn btn-sm btn-secondary" onClick={() => openEdit(item)}>
                       <Pencil size={14} />
                     </button>

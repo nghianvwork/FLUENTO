@@ -11,20 +11,50 @@ const accents = ['AMERICAN', 'BRITISH', 'AUSTRALIAN', 'SINGAPORE'];
 export default function Profile() {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ displayName: '', nativeLanguage: '', cefrLevel: '', targetLevel: '', dailyGoalMinutes: 15, preferredAccent: '', careerIndustry: '', careerGoal: '' });
 
   useEffect(() => {
+    setLoading(true);
     userApi.getProfile().then(res => {
       const p = res.data.data;
       setProfile(p);
-      setForm({ displayName: p.displayName || '', nativeLanguage: p.nativeLanguage || 'Vietnamese', cefrLevel: p.cefrLevel || 'A1', targetLevel: p.targetLevel || 'B2', dailyGoalMinutes: p.dailyGoalMinutes || 15, preferredAccent: p.preferredAccent || 'AMERICAN', careerIndustry: p.careerIndustry || '', careerGoal: p.careerGoal || '' });
-    }).catch(() => {
-      setForm({ displayName: user?.fullName || '', nativeLanguage: 'Vietnamese', cefrLevel: 'A1', targetLevel: 'B2', dailyGoalMinutes: 15, preferredAccent: 'AMERICAN', careerIndustry: '', careerGoal: '' });
+      setForm({
+        displayName: p.displayName || '',
+        nativeLanguage: p.nativeLanguage || 'Vietnamese',
+        cefrLevel: p.cefrLevel || 'A1',
+        targetLevel: p.targetLevel || 'B2',
+        dailyGoalMinutes: p.dailyGoalMinutes || 15,
+        preferredAccent: p.preferredAccent || 'AMERICAN',
+        careerIndustry: p.careerIndustry || '',
+        careerGoal: p.careerGoal || '',
+      });
+    }).catch((err) => {
+      toast.error(err.response?.data?.message || 'Khong tai duoc profile');
+    }).finally(() => {
+      setLoading(false);
     });
   }, []);
 
   const handleSave = async () => {
-    try { await userApi.updateProfile(form); toast.success('Profile updated!'); } catch { toast.success('Profile updated! (demo)'); }
+    try {
+      const res = await userApi.updateProfile(form);
+      const p = res.data.data;
+      setProfile(p);
+      setForm({
+        displayName: p.displayName || '',
+        nativeLanguage: p.nativeLanguage || 'Vietnamese',
+        cefrLevel: p.cefrLevel || 'A1',
+        targetLevel: p.targetLevel || 'B2',
+        dailyGoalMinutes: p.dailyGoalMinutes || 15,
+        preferredAccent: p.preferredAccent || 'AMERICAN',
+        careerIndustry: p.careerIndustry || '',
+        careerGoal: p.careerGoal || '',
+      });
+      toast.success('Profile updated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Cap nhat that bai');
+    }
   };
 
   return (
@@ -35,6 +65,9 @@ export default function Profile() {
       </div>
 
       <div style={{ maxWidth: 600 }}>
+        {loading && (
+          <div className="text-center text-muted" style={{ padding: 40 }}>Dang tai profile...</div>
+        )}
         {/* Stats */}
         {profile && (
           <div className="stats-grid mb-24">

@@ -32,6 +32,7 @@ import Planner from './pages/user/Planner';
 import Community from './pages/user/Community';
 import CommunityClub from './pages/user/CommunityClub';
 import Journal from './pages/user/Journal';
+import Notifications from './pages/user/Notifications';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminContent from './pages/admin/AdminContent';
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="challenges" element={<Challenges />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="planner" element={<Planner />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="community" element={<Community />} />
           <Route path="community/clubs/:id" element={<CommunityClub />} />
           <Route path="journal" element={<Journal />} />

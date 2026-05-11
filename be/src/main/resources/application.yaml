@@ -78,3 +78,6 @@ logging:
   level:
     com.enova: DEBUG
     org.springframework.security: INFO
+
+notification:
+  reminder-cron: "0 0 8 * * *"

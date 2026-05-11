@@ -7,6 +7,8 @@ export const authApi = {
     api.post('/auth/login', data),
   refresh: (refreshToken: string) =>
     api.post('/auth/refresh', { refreshToken }),
+  logout: (refreshToken: string) =>
+    api.post('/auth/logout', { refreshToken }),
 };
 
 export const userApi = {
@@ -38,6 +40,8 @@ export const careerApi = {
   reviewVocab: (vocabId: number, correct: boolean) =>
     api.post(`/career/vocabulary/${vocabId}/review`, { correct }),
   getProgress: () => api.get('/career/progress'),
+  seedVocabulary: (id: number) => api.post(`/career/paths/${id}/seed`),
+  seedLessons: (id: number) => api.post(`/career/paths/${id}/seed-lessons`),
 };
 
 export const accentApi = {
@@ -49,6 +53,8 @@ export const accentApi = {
 export const contentApi = {
   getAll: (topic?: string, type?: string) =>
     api.get('/content', { params: { topic, type } }),
+  getRecommended: (limit = 10) =>
+    api.get('/content/recommended', { params: { limit } }),
   getById: (id: number) => api.get(`/content/${id}`),
   getProgress: () => api.get('/content/progress'),
   start: (contentId: number) => api.post(`/content/${contentId}/start`),
@@ -98,6 +104,8 @@ export const speakingApi = {
   getRooms: () => api.get('/speaking/rooms'),
   joinRoom: (roomId: number) => api.post(`/speaking/rooms/${roomId}/join`),
   leaveRoom: (roomId: number) => api.post(`/speaking/rooms/${roomId}/leave`),
+  getHistory: (roomId: number) => api.get(`/speaking/rooms/${roomId}/history`),
+  getMyHistory: () => api.get('/speaking/history'),
 };
 
 export const performanceApi = {
@@ -142,6 +150,7 @@ export const adminApi = {
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data: any) => api.put('/admin/settings', data),
   generateInsights: (data?: { focus?: string }) => api.post('/admin/ai/insights', data || {}),
+  generateQuiz: (contentId: number) => api.post('/content/ai/generate-quiz', { contentId }),
 };
 
 export const aiApi = {
@@ -197,4 +206,11 @@ export const challengeApi = {
 export const srsApi = {
   getDueReviews: () => api.get('/v2/srs/due'),
   submitReview: (data: { progressId: number; quality: number }) => api.post('/v2/srs/review', data),
+};
+
+export const notificationApi = {
+  getAll: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id: number) => api.post(`/notifications/${id}/read`),
+  markAllRead: () => api.post('/notifications/read-all'),
 };

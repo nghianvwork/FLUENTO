@@ -89,4 +89,12 @@ public class SpeakingRoomService {
     public List<RoomParticipant> getRoomParticipants(Long roomId) {
         return participantRepository.findByRoomId(roomId);
     }
+
+    public List<RoomParticipant> getRoomHistory(Long roomId, Long userId) {
+        return participantRepository.findByRoomIdAndUserIdOrderByJoinedAtDesc(roomId, userId);
+    }
+
+    public List<RoomParticipant> getUserHistory(Long userId) {
+        return participantRepository.findByUserIdOrderByJoinedAtDesc(userId);
+    }
 }

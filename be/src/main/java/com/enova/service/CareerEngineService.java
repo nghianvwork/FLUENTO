@@ -134,8 +134,9 @@ public class CareerEngineService {
                                         .word(node.path("word").asText())
                                         .phonetic(node.path("phonetic").asText())
                                         .partOfSpeech(node.path("partOfSpeech").asText())
+                                        .definition(node.path("definition").asText())
                                         .meaningVi(node.path("meaningVi").asText())
-                                        .exampleSentence(node.path("exampleSentence").asText())
+                                        .exampleSentences(node.path("exampleSentences").toString())
                                         .difficulty(Scenario.Difficulty.INTERMEDIATE)
                                         .frequencyRank(i * 100)
                                         .build();
@@ -146,6 +147,34 @@ public class CareerEngineService {
                         }
                     }
                     Thread.sleep(2000); // Wait between batches to respect rate limits
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public void seedLessonsForPathAsync(Long careerPathId) {
+        CareerPath path = careerPathRepository.findById(careerPathId)
+                .orElseThrow(() -> new ResourceNotFoundException("Career path not found"));
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                String[] topics = {"Foundations", "Communication", "Technical Skills", "Workplace Culture", "Professional Growth"};
+                for (int i = 0; i < topics.length; i++) {
+                    com.fasterxml.jackson.databind.JsonNode json = geminiService.generateCareerLesson(path.getName(), topics[i]).orElse(null);
+                    if (json != null) {
+                        Lesson lesson = Lesson.builder()
+                                .careerPath(path)
+                                .title(json.path("title").asText(topics[i] + " Essentials"))
+                                .lessonType(Lesson.LessonType.VOCABULARY)
+                                .contentJson(json.toString())
+                                .orderIndex(i + 1)
+                                .estimatedMinutes(20)
+                                .build();
+                        lessonRepository.save(lesson);
+                    }
+                    Thread.sleep(2000);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

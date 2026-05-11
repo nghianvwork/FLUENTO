@@ -45,20 +45,8 @@ export default function RoleplayChat() {
         timestamp: new Date(), errors: data.errors, tips: data.tips
       };
       setMessages(prev => [...prev, aiMsg]);
-    } catch {
-      const fallbackResponses = [
-        "That's a great point! Could you elaborate on your experience with that?",
-        "Interesting perspective. How would you handle a more challenging scenario?",
-        "Thank you for sharing. Let me ask you about your approach to teamwork.",
-        "Good answer! Now let's discuss your long-term career goals.",
-      ];
-      const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(), role: 'ai',
-        content: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
-        timestamp: new Date(), errors: input.length < 20 ? ['Try to provide more detailed responses.'] : [],
-        tips: ['Use specific examples from your experience.']
-      };
-      setMessages(prev => [...prev, aiMsg]);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Khong the gui tin nhan');
     }
     setLoading(false);
   };

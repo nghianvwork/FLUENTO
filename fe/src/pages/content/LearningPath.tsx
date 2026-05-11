@@ -4,35 +4,51 @@ import { ContentItem } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { Play, Clock, TrendingUp, Target } from 'lucide-react';
 
+interface ProgressItem {
+  contentId: number;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export default function LearningPath() {
   const navigate = useNavigate();
-  const [progress, setProgress] = useState<any[]>([]);
+  const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [recommended, setRecommended] = useState<ContentItem[]>([]);
+  const [contentMap, setContentMap] = useState<Record<number, ContentItem>>({});
 
   useEffect(() => {
-    loadProgress();
-    loadRecommended();
+    loadData();
   }, []);
 
-  const loadProgress = () => {
-    contentApi.getProgress().then(res => setProgress(res.data.data));
-  };
-
-  const loadRecommended = () => {
-    // Load recommended content based on user's progress and interests
-    contentApi.getAll().then(res => {
-      const items = res.data.data;
-      // Simple recommendation: show items user hasn't completed
-      const completedIds = new Set(progress.filter(p => p.status === 'COMPLETED').map(p => p.contentId));
-      const notCompleted = items.filter((i: ContentItem) => !completedIds.has(i.id));
-      setRecommended(notCompleted.slice(0, 6));
-    });
+  const loadData = async () => {
+    try {
+      const [progressRes, contentRes, recommendedRes] = await Promise.all([
+        contentApi.getProgress(),
+        contentApi.getAll(),
+        contentApi.getRecommended(6),
+      ]);
+      const progressData = progressRes.data.data || [];
+      setProgress(progressData);
+      const contentItems = contentRes.data.data || [];
+      const map: Record<number, ContentItem> = {};
+      contentItems.forEach((item: ContentItem) => {
+        map[item.id] = item;
+      });
+      setContentMap(map);
+      setRecommended(recommendedRes.data.data || []);
+    } catch (err: any) {
+      // keep empty states, error handling handled by UI
+    }
   };
 
   const formatDuration = (s: number) => `${Math.floor(s / 60)} phút`;
 
   const completedCount = progress.filter(p => p.status === 'COMPLETED').length;
   const inProgressCount = progress.filter(p => p.status === 'IN_PROGRESS').length;
+  const totalMinutes = Math.floor(
+    progress.reduce((sum, p) => sum + (contentMap[p.contentId]?.durationSeconds || 0), 0) / 60
+  );
 
   return (
     <div>
@@ -65,9 +81,7 @@ export default function LearningPath() {
             <Clock size={24} style={{ color: 'var(--warning)' }} />
             <div style={{ fontWeight: 700, fontSize: 18 }}>Tổng thời gian</div>
           </div>
-          <div style={{ fontSize: 32, fontWeight: 700 }}>
-            {Math.floor(progress.reduce((sum, p) => sum + (p.durationSeconds || 0), 0) / 60)}
-          </div>
+          <div style={{ fontSize: 32, fontWeight: 700 }}>{totalMinutes}</div>
           <div className="text-sm text-muted">phút</div>
         </div>
       </div>
@@ -122,9 +136,9 @@ export default function LearningPath() {
               <div key={idx} className="card" style={{ background: 'var(--bg-tertiary)' }}>
                 <div className="flex justify-between items-center">
                   <div className="flex-1">
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Content #{p.contentId}</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{contentMap[p.contentId]?.title || `Content #${p.contentId}`}</div>
                     <div className="text-xs text-muted">
-                      Bắt đầu: {new Date(p.startedAt).toLocaleDateString('vi-VN')}
+                      Bắt đầu: {p.startedAt ? new Date(p.startedAt).toLocaleDateString('vi-VN') : '---'}
                       {p.completedAt && ` • Hoàn thành: ${new Date(p.completedAt).toLocaleDateString('vi-VN')}`}
                     </div>
                   </div>

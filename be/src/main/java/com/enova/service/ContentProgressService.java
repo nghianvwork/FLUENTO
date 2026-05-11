@@ -6,6 +6,7 @@ import com.enova.model.ContentItem;
 import com.enova.model.ContentProgress;
 import com.enova.model.User;
 import com.enova.repository.ContentProgressRepository;
+import com.enova.repository.UserProfileRepository;
 import com.enova.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class ContentProgressService {
     private final ContentService contentService;
     private final ContentProgressRepository progressRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository profileRepository;
 
     public List<ContentProgressResponse> getProgress(Long userId) {
         return progressRepository.findByUserId(userId).stream()
@@ -54,6 +56,7 @@ public class ContentProgressService {
         }
 
         progressRepository.save(progress);
+        touchLastStudyDate(user.getId());
         return buildResponse(progress);
     }
 
@@ -83,7 +86,15 @@ public class ContentProgressService {
         }
 
         progressRepository.save(progress);
+        touchLastStudyDate(user.getId());
         return buildResponse(progress);
+    }
+
+    private void touchLastStudyDate(Long userId) {
+        profileRepository.findByUserId(userId).ifPresent(profile -> {
+            profile.setLastStudyDate(LocalDateTime.now());
+            profileRepository.save(profile);
+        });
     }
 
     private ContentProgressResponse buildResponse(ContentProgress progress) {
