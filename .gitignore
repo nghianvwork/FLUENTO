@@ -1,0 +1,33 @@
+# Environment variables (contains API keys)
+.env
+*.env
+.env.*
+
+# Java / Maven
+be/target/
+be/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Node / Frontend
+fe/node_modules/
+fe/dist/
+fe/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Uploads
+be/uploads/
+
+# Logs
+*.log
