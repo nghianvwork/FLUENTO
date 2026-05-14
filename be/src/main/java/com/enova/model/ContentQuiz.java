@@ -22,17 +22,24 @@ public class ContentQuiz {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String question;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private QuestionType questionType = QuestionType.MULTIPLE_CHOICE;
+
+    @Column(name = "option_a", nullable = false, columnDefinition = "TEXT")
     private String optionA;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "option_b", nullable = false, columnDefinition = "TEXT")
     private String optionB;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "option_c", nullable = false, columnDefinition = "TEXT")
     private String optionC;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "option_d", nullable = false, columnDefinition = "TEXT")
     private String optionD;
+
+    @Column(columnDefinition = "TEXT")
+    private String optionsJson;
 
     @Column(nullable = false, length = 1)
     private String correctAnswer;
@@ -46,4 +53,10 @@ public class ContentQuiz {
     @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public enum QuestionType {
+        MULTIPLE_CHOICE,
+        FILL_BLANK,
+        SENTENCE_ORDER
+    }
 }

@@ -4,6 +4,7 @@ import com.enova.dto.request.AdminTestQuestionRequest;
 import com.enova.dto.request.AdminTestRequest;
 import com.enova.dto.request.ContentTestAnswerRequest;
 import com.enova.dto.response.ContentTestAttemptResponse;
+import com.enova.dto.response.ContentTestReviewItemResponse;
 import com.enova.dto.response.ContentTestQuestionResponse;
 import com.enova.dto.response.ContentTestResponse;
 import com.enova.exception.ResourceNotFoundException;
@@ -68,14 +69,23 @@ public class ContentTestService {
         int correctAnswers = 0;
         int totalPoints = 0;
         int earnedPoints = 0;
+        List<ContentTestReviewItemResponse> review = new java.util.ArrayList<>();
 
         for (ContentTestQuestion question : questions) {
             totalPoints += question.getPoints();
             String userAnswer = request.getAnswers().get(question.getId());
-            if (userAnswer != null && userAnswer.trim().equalsIgnoreCase(question.getCorrectAnswer().trim())) {
+            boolean isCorrect = isAnswerCorrect(question, userAnswer);
+            if (isCorrect) {
                 correctAnswers++;
                 earnedPoints += question.getPoints();
             }
+            review.add(ContentTestReviewItemResponse.of(
+                    question,
+                    userAnswer,
+                    question.getCorrectAnswer(),
+                    isCorrect,
+                    isCorrect ? question.getPoints() : 0
+            ));
         }
 
         int score = totalPoints > 0 ? (earnedPoints * 100) / totalPoints : 0;
@@ -100,7 +110,44 @@ public class ContentTestService {
                 .build();
 
         attempt = attemptRepository.save(attempt);
-        return ContentTestAttemptResponse.from(attempt);
+        return ContentTestAttemptResponse.from(attempt, review);
+    }
+
+    private boolean isAnswerCorrect(ContentTestQuestion question, String userAnswer) {
+        if (userAnswer == null) return false;
+        String correctAnswer = question.getCorrectAnswer();
+        if (correctAnswer == null) return false;
+
+        ContentTestQuestion.QuestionType type = question.getQuestionType() != null
+                ? question.getQuestionType()
+                : ContentTestQuestion.QuestionType.MULTIPLE_CHOICE;
+
+        return switch (type) {
+            case MULTIPLE_CHOICE -> normalize(userAnswer).equalsIgnoreCase(normalize(correctAnswer));
+            case FILL_BLANK -> normalize(userAnswer).equalsIgnoreCase(normalize(correctAnswer));
+            case SENTENCE_ORDER -> compareJsonArray(userAnswer, correctAnswer);
+        };
+    }
+
+    private boolean compareJsonArray(String userAnswer, String correctAnswer) {
+        try {
+            List<?> user = objectMapper.readValue(userAnswer, List.class);
+            List<?> correct = objectMapper.readValue(correctAnswer, List.class);
+            if (user.size() != correct.size()) return false;
+            for (int i = 0; i < user.size(); i++) {
+                String u = String.valueOf(user.get(i));
+                String c = String.valueOf(correct.get(i));
+                if (!normalize(u).equalsIgnoreCase(normalize(c))) return false;
+            }
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private String normalize(String text) {
+        if (text == null) return "";
+        return text.trim().toLowerCase();
     }
 
     public List<ContentTestAttemptResponse> getTestAttempts(Long testId, Long userId) {
@@ -119,6 +166,20 @@ public class ContentTestService {
 
     public List<ContentTestResponse> getAllTests() {
         return testRepository.findAll()
+                .stream()
+                .map(test -> {
+                    List<ContentTestQuestionResponse> questions = questionRepository
+                            .findByTestIdOrderByOrderIndexAsc(test.getId())
+                            .stream()
+                            .map(ContentTestQuestionResponse::from)
+                            .collect(Collectors.toList());
+                    return ContentTestResponse.from(test, questions);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<ContentTestResponse> getActiveTests() {
+        return testRepository.findByIsActiveTrue()
                 .stream()
                 .map(test -> {
                     List<ContentTestQuestionResponse> questions = questionRepository
@@ -153,6 +214,9 @@ public class ContentTestService {
                 ContentTestQuestion q = ContentTestQuestion.builder()
                         .test(test)
                         .question(qReq.getQuestion())
+                    .questionType(qReq.getQuestionType() != null
+                        ? ContentTestQuestion.QuestionType.valueOf(qReq.getQuestionType())
+                        : ContentTestQuestion.QuestionType.MULTIPLE_CHOICE)
                         .options(qReq.getOptions())
                         .correctAnswer(qReq.getCorrectAnswer())
                         .explanation(qReq.getExplanation())
@@ -194,6 +258,9 @@ public class ContentTestService {
                 ContentTestQuestion q = ContentTestQuestion.builder()
                         .test(test)
                         .question(qReq.getQuestion())
+                    .questionType(qReq.getQuestionType() != null
+                        ? ContentTestQuestion.QuestionType.valueOf(qReq.getQuestionType())
+                        : ContentTestQuestion.QuestionType.MULTIPLE_CHOICE)
                         .options(qReq.getOptions())
                         .correctAnswer(qReq.getCorrectAnswer())
                         .explanation(qReq.getExplanation())

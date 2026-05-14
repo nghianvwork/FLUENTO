@@ -7,10 +7,12 @@ interface Quiz {
   id: number;
   contentId: number;
   question: string;
+  questionType?: 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'SENTENCE_ORDER';
   optionA: string;
   optionB: string;
   optionC: string;
   optionD: string;
+  optionsJson?: string;
   correctAnswer?: string;
   explanation?: string;
   userAnswered?: boolean;
@@ -31,8 +33,13 @@ export default function ContentQuiz({ contentId }: { contentId: number }) {
 
   const handleSubmit = async (quizId: number) => {
     const answer = selectedAnswers[quizId];
-    if (!answer) {
-      toast.error('Vui lòng chọn đáp án');
+    const quiz = quizzes.find(q => q.id === quizId);
+    const type = quiz?.questionType || 'MULTIPLE_CHOICE';
+    const hasAnswer = type === 'SENTENCE_ORDER'
+      ? parseOrderAnswer(answer).length > 0
+      : !!answer && answer.trim().length > 0;
+    if (!hasAnswer) {
+      toast.error('Vui lòng trả lời câu hỏi');
       return;
     }
     try {
@@ -53,6 +60,26 @@ export default function ContentQuiz({ contentId }: { contentId: number }) {
     return { A: 'A', B: 'B', C: 'C', D: 'D' }[opt] || opt;
   };
 
+  const parseOptions = (optionsJson?: string): string[] => {
+    if (!optionsJson) return [];
+    try {
+      const parsed = JSON.parse(optionsJson);
+      return Array.isArray(parsed) ? parsed : Object.values(parsed);
+    } catch {
+      return [];
+    }
+  };
+
+  const parseOrderAnswer = (value?: string): string[] => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   return (
     <div className="card">
       <div className="card-title mb-16">🧠 Quiz kiểm tra</div>
@@ -69,43 +96,101 @@ export default function ContentQuiz({ contentId }: { contentId: number }) {
                   <div style={{ fontWeight: 600, marginBottom: 12 }}>{quiz.question}</div>
                   
                   <div className="flex flex-col gap-8">
-                    {['A', 'B', 'C', 'D'].map(opt => {
-                      const optionText = quiz[`option${opt}` as keyof Quiz] as string;
-                      const isSelected = selectedAnswers[quiz.id] === opt;
-                      const isCorrect = quiz.correctAnswer === opt;
-                      const showResult = quiz.userAnswered;
+                    {((quiz.questionType || 'MULTIPLE_CHOICE') === 'FILL_BLANK') && (
+                      <input
+                        className="input"
+                        placeholder="Type your answer"
+                        value={selectedAnswers[quiz.id] || ''}
+                        onChange={(e) => setSelectedAnswers(prev => ({ ...prev, [quiz.id]: e.target.value }))}
+                        disabled={quiz.userAnswered}
+                      />
+                    )}
 
+                    {((quiz.questionType || 'MULTIPLE_CHOICE') === 'SENTENCE_ORDER') && (() => {
+                      const options = parseOptions(quiz.optionsJson);
+                      const selected = parseOrderAnswer(selectedAnswers[quiz.id]);
+                      const remaining = options.filter(opt => !selected.includes(opt));
                       return (
-                        <label
-                          key={opt}
-                          className={`flex items-center gap-8 p-12 rounded-lg cursor-pointer transition-all ${
-                            showResult
-                              ? isCorrect
-                                ? 'bg-green-500/20 border-2 border-green-500'
-                                : isSelected
-                                ? 'bg-red-500/20 border-2 border-red-500'
-                                : 'bg-gray-500/10'
-                              : isSelected
-                              ? 'bg-primary/20 border-2 border-primary'
-                              : 'bg-gray-500/10 hover:bg-gray-500/20'
-                          }`}
-                          style={{ border: showResult || isSelected ? undefined : '1px solid var(--border)' }}
-                        >
-                          <input
-                            type="radio"
-                            name={`quiz-${quiz.id}`}
-                            value={opt}
-                            checked={isSelected}
-                            onChange={() => setSelectedAnswers(prev => ({ ...prev, [quiz.id]: opt }))}
-                            disabled={quiz.userAnswered}
-                            style={{ accentColor: 'var(--primary)' }}
-                          />
-                          <span className="flex-1">{getOptionLabel(opt)}. {optionText}</span>
-                          {showResult && isCorrect && <CheckCircle size={18} color="green" />}
-                          {showResult && isSelected && !isCorrect && <XCircle size={18} color="red" />}
-                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {remaining.map((opt, optIndex) => (
+                              <button
+                                key={optIndex}
+                                className="btn btn-sm btn-secondary"
+                                onClick={() => {
+                                  const next = [...selected, opt];
+                                  setSelectedAnswers(prev => ({ ...prev, [quiz.id]: JSON.stringify(next) }));
+                                }}
+                                disabled={quiz.userAnswered}
+                              >
+                                + {opt}
+                              </button>
+                            ))}
+                            {remaining.length === 0 && (
+                              <span className="text-sm text-muted">All parts selected</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {selected.map((opt, optIndex) => (
+                              <button
+                                key={`${opt}-${optIndex}`}
+                                className="btn btn-sm btn-primary"
+                                onClick={() => {
+                                  const next = selected.filter((_, i) => i !== optIndex);
+                                  setSelectedAnswers(prev => ({ ...prev, [quiz.id]: JSON.stringify(next) }));
+                                }}
+                                disabled={quiz.userAnswered}
+                              >
+                                {optIndex + 1}. {opt} ✕
+                              </button>
+                            ))}
+                            {selected.length === 0 && (
+                              <span className="text-sm text-muted">Click parts above to build the sentence</span>
+                            )}
+                          </div>
+                        </div>
                       );
-                    })}
+                    })()}
+
+                    {((quiz.questionType || 'MULTIPLE_CHOICE') === 'MULTIPLE_CHOICE') && (
+                      ['A', 'B', 'C', 'D'].map(opt => {
+                        const optionText = quiz[`option${opt}` as keyof Quiz] as string;
+                        const isSelected = selectedAnswers[quiz.id] === opt;
+                        const isCorrect = quiz.correctAnswer === opt;
+                        const showResult = quiz.userAnswered;
+
+                        return (
+                          <label
+                            key={opt}
+                            className={`flex items-center gap-8 p-12 rounded-lg cursor-pointer transition-all ${
+                              showResult
+                                ? isCorrect
+                                  ? 'bg-green-500/20 border-2 border-green-500'
+                                  : isSelected
+                                  ? 'bg-red-500/20 border-2 border-red-500'
+                                  : 'bg-gray-500/10'
+                                : isSelected
+                                ? 'bg-primary/20 border-2 border-primary'
+                                : 'bg-gray-500/10 hover:bg-gray-500/20'
+                            }`}
+                            style={{ border: showResult || isSelected ? undefined : '1px solid var(--border)' }}
+                          >
+                            <input
+                              type="radio"
+                              name={`quiz-${quiz.id}`}
+                              value={opt}
+                              checked={isSelected}
+                              onChange={() => setSelectedAnswers(prev => ({ ...prev, [quiz.id]: opt }))}
+                              disabled={quiz.userAnswered}
+                              style={{ accentColor: 'var(--primary)' }}
+                            />
+                            <span className="flex-1">{getOptionLabel(opt)}. {optionText}</span>
+                            {showResult && isCorrect && <CheckCircle size={18} color="green" />}
+                            {showResult && isSelected && !isCorrect && <XCircle size={18} color="red" />}
+                          </label>
+                        );
+                      })
+                    )}
                   </div>
 
                   {quiz.userAnswered && quiz.explanation && (

@@ -1,5 +1,6 @@
 package com.enova.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -36,8 +37,22 @@ public class Vocabulary {
     @Column(columnDefinition = "JSON")
     private String exampleSentences;
 
+    @Column(length = 500)
+    private String audioUrl;
+
+    @Column(columnDefinition = "JSON")
+    private String synonyms;
+
+    @Column(columnDefinition = "JSON")
+    private String antonyms;
+
+    @Column(length = 30)
+    @Builder.Default
+    private String source = "MANUAL";
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "career_path_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private CareerPath careerPath;
 
     @Enumerated(EnumType.STRING)

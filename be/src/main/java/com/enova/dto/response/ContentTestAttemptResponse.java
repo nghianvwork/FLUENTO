@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -22,6 +23,7 @@ public class ContentTestAttemptResponse {
     private Integer timeSpent;
     private Boolean passed;
     private String answers;
+    private List<ContentTestReviewItemResponse> review;
     private LocalDateTime createdAt;
 
     public static ContentTestAttemptResponse from(ContentTestAttempt attempt) {
@@ -37,5 +39,11 @@ public class ContentTestAttemptResponse {
                 .answers(attempt.getAnswers())
                 .createdAt(attempt.getCreatedAt())
                 .build();
+    }
+
+    public static ContentTestAttemptResponse from(ContentTestAttempt attempt, List<ContentTestReviewItemResponse> review) {
+        ContentTestAttemptResponse response = from(attempt);
+        response.setReview(review);
+        return response;
     }
 }

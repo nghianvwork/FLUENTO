@@ -23,7 +23,7 @@ public class ContentQuizAttempt {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(nullable = false, length = 1)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String userAnswer;
 
     @Column(nullable = false)

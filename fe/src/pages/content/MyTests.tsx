@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ClipboardCheck, Award, Clock, TrendingUp, Calendar, Target, BarChart3, RefreshCw } from 'lucide-react';
 import { contentApi } from '../../services/apiServices';
 import toast from 'react-hot-toast';
@@ -15,14 +16,28 @@ interface TestAttempt {
   createdAt: string;
 }
 
+interface AvailableTest {
+  id: number;
+  contentId: number;
+  contentTitle?: string;
+  title: string;
+  description?: string;
+  type: string;
+  timeLimit: number;
+  passingScore: number;
+}
+
 export default function MyTests() {
+  const navigate = useNavigate();
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
+  const [availableTests, setAvailableTests] = useState<AvailableTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'passed' | 'failed'>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadAttempts();
+    loadAvailableTests();
   }, []);
 
   const loadAttempts = async (showRefresh = false) => {
@@ -37,6 +52,16 @@ export default function MyTests() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadAvailableTests = async () => {
+    try {
+      const res = await contentApi.getActiveTests();
+      const data = res.data;
+      if (data.success) setAvailableTests(data.data || []);
+    } catch (error) {
+      console.error('Failed to load available tests:', error);
     }
   };
 
@@ -116,6 +141,50 @@ export default function MyTests() {
           <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
           Refresh
         </button>
+      </div>
+
+      {/* Available Tests */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>Available Tests</div>
+          <button
+            onClick={loadAvailableTests}
+            className="btn btn-sm btn-secondary"
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
+        {availableTests.length === 0 ? (
+          <div className="text-muted" style={{ fontSize: 14 }}>
+            No active tests available yet.
+          </div>
+        ) : (
+          <div className="card-grid">
+            {availableTests.map(test => (
+              <div key={test.id} className="card" style={{ padding: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>{test.title}</div>
+                <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                  {test.contentTitle || `Content #${test.contentId}`}
+                </div>
+                {test.description && (
+                  <div className="text-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                    {test.description}
+                  </div>
+                )}
+                <div className="text-sm text-muted" style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                  <span>⏱ {test.timeLimit}m</span>
+                  <span>🎯 {test.passingScore}%</span>
+                </div>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => navigate(`/app/content/${test.contentId}?tab=test`)}
+                >
+                  Start Test
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}

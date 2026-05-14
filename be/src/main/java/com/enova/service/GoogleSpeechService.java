@@ -27,18 +27,17 @@ public class GoogleSpeechService {
         byte[] data = Files.readAllBytes(audioPath);
         ByteString audioBytes = ByteString.copyFrom(data);
 
-        RecognitionConfig.AudioEncoding audioEncoding = switch (encoding) {
-            case "MP3" -> RecognitionConfig.AudioEncoding.MP3;
-            case "WEBM_OPUS" -> RecognitionConfig.AudioEncoding.WEBM_OPUS;
-            default -> RecognitionConfig.AudioEncoding.LINEAR16;
-        };
-
-        RecognitionConfig config = RecognitionConfig.newBuilder()
+        RecognitionConfig.AudioEncoding audioEncoding = detectEncoding(audioPath);
+        RecognitionConfig.Builder configBuilder = RecognitionConfig.newBuilder()
                 .setEncoding(audioEncoding)
-                .setSampleRateHertz(sampleRate)
                 .setLanguageCode(languageCode)
-                .setEnableAutomaticPunctuation(true)
-                .build();
+                .setEnableAutomaticPunctuation(true);
+
+        if (audioEncoding == RecognitionConfig.AudioEncoding.LINEAR16) {
+            configBuilder.setSampleRateHertz(sampleRate);
+        }
+
+        RecognitionConfig config = configBuilder.build();
 
         RecognitionAudio audio = RecognitionAudio.newBuilder().setContent(audioBytes).build();
 
@@ -53,6 +52,19 @@ public class GoogleSpeechService {
                     .confidence(best.getConfidence())
                     .build();
         }
+    }
+
+    private RecognitionConfig.AudioEncoding detectEncoding(Path audioPath) {
+        String name = audioPath.getFileName().toString().toLowerCase();
+        if (name.endsWith(".mp3")) return RecognitionConfig.AudioEncoding.MP3;
+        if (name.endsWith(".webm")) return RecognitionConfig.AudioEncoding.WEBM_OPUS;
+        if (name.endsWith(".wav")) return RecognitionConfig.AudioEncoding.LINEAR16;
+
+        return switch (encoding) {
+            case "MP3" -> RecognitionConfig.AudioEncoding.MP3;
+            case "WEBM_OPUS" -> RecognitionConfig.AudioEncoding.WEBM_OPUS;
+            default -> RecognitionConfig.AudioEncoding.LINEAR16;
+        };
     }
 
     public record SpeechRecognitionResult(String transcript, float confidence) {

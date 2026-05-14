@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ContentTestRepository extends JpaRepository<ContentTest, Long> {
     List<ContentTest> findByContentIdAndIsActiveTrue(Long contentId);
     Optional<ContentTest> findByIdAndIsActiveTrue(Long id);
+    List<ContentTest> findByIsActiveTrue();
 }

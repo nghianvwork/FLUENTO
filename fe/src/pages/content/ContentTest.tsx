@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 interface TestQuestion {
   id: number;
   question: string;
+  questionType: 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'SENTENCE_ORDER';
   options: string;
   points: number;
   orderIndex: number;
@@ -29,6 +30,17 @@ interface TestAttempt {
   timeSpent: number;
   passed: boolean;
   createdAt: string;
+  review?: Array<{
+    questionId: number;
+    question: string;
+    questionType: string;
+    userAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+    explanation?: string;
+    points: number;
+    pointsEarned: number;
+  }>;
 }
 
 interface ContentTestProps {
@@ -128,6 +140,16 @@ export default function ContentTest({ contentId }: ContentTestProps) {
     }
   };
 
+  const parseOrderAnswer = (value?: string): string[] => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -140,8 +162,26 @@ export default function ContentTest({ contentId }: ContentTestProps) {
     return 'var(--accent-red)';
   };
 
-  const answeredCount = Object.keys(answers).length;
+  const isAnswerFilled = (question: TestQuestion, value?: string) => {
+    if (!value) return false;
+    const type = question.questionType || 'MULTIPLE_CHOICE';
+    if (type === 'SENTENCE_ORDER') {
+      return parseOrderAnswer(value).length > 0;
+    }
+    return value.trim().length > 0;
+  };
+
+  const answeredCount = selectedTest
+    ? selectedTest.questions.filter(q => isAnswerFilled(q, answers[q.id])).length
+    : 0;
   const totalQuestions = selectedTest?.questions.length || 0;
+
+  const formatAnswer = (value?: string) => {
+    if (!value) return '-';
+    const parsed = parseOrderAnswer(value);
+    if (parsed.length > 0) return parsed.join(' ');
+    return value;
+  };
 
   // ========== RESULT VIEW ==========
   if (result) {
@@ -221,6 +261,35 @@ export default function ContentTest({ contentId }: ContentTestProps) {
           </button>
         </div>
 
+        {result.review && result.review.length > 0 && (
+          <div className="card" style={{ marginTop: 16, padding: 20 }}>
+            <h3 style={{ fontWeight: 600, fontSize: 15, marginBottom: 12 }}>Review & Explanations</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {result.review.map((item, idx) => (
+                <div key={item.questionId} style={{ padding: 14, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600 }}>Q{idx + 1}. {item.question}</div>
+                    <span className={`badge ${item.isCorrect ? 'badge-green' : 'badge-red'}`}>
+                      {item.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                    </span>
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Your answer: <strong>{formatAnswer(item.userAnswer)}</strong>
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Correct answer: <strong>{formatAnswer(item.correctAnswer)}</strong>
+                  </div>
+                  {item.explanation && (
+                    <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      💡 {item.explanation}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Previous Attempts */}
         {attempts.length > 0 && (
           <div className="card" style={{ marginTop: 16, padding: 20 }}>
@@ -293,8 +362,13 @@ export default function ContentTest({ contentId }: ContentTestProps) {
         {/* Questions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {selectedTest.questions.map((question, index) => {
+            const questionType = question.questionType || 'MULTIPLE_CHOICE';
             const options = parseOptions(question.options);
             const selected = answers[question.id];
+            const orderAnswer = parseOrderAnswer(selected);
+            const remaining = questionType === 'SENTENCE_ORDER'
+              ? options.filter((opt) => !orderAnswer.includes(opt))
+              : [];
             return (
               <div key={question.id} className="card" style={{
                 borderColor: selected ? 'var(--border-hover)' : 'var(--border)',
@@ -317,49 +391,101 @@ export default function ContentTest({ contentId }: ContentTestProps) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 44 }}>
-                  {options.map((option, optIndex) => {
-                    const letter = String.fromCharCode(65 + optIndex);
-                    const isSelected = selected === letter;
-                    return (
-                      <label
-                        key={optIndex}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '12px 16px', borderRadius: 'var(--radius-md)',
-                          border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          background: isSelected
-                            ? 'rgba(108,92,231,0.1)'
-                            : 'var(--bg-secondary)',
-                          cursor: 'pointer', transition: 'all 0.2s',
-                        }}
-                      >
-                        <div style={{
-                          width: 22, height: 22, borderRadius: '50%',
-                          border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>
-                          {isSelected && (
+                  {questionType === 'FILL_BLANK' && (
+                    <input
+                      className="input"
+                      placeholder="Type your answer"
+                      value={selected || ''}
+                      onChange={(e) => setAnswers({ ...answers, [question.id]: e.target.value })}
+                    />
+                  )}
+
+                  {questionType === 'SENTENCE_ORDER' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {remaining.map((opt, optIndex) => (
+                          <button
+                            key={optIndex}
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => {
+                              const next = [...orderAnswer, opt];
+                              setAnswers({ ...answers, [question.id]: JSON.stringify(next) });
+                            }}
+                          >
+                            + {opt}
+                          </button>
+                        ))}
+                        {remaining.length === 0 && (
+                          <span className="text-sm text-muted">All parts selected</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {orderAnswer.map((opt, optIndex) => (
+                          <button
+                            key={`${opt}-${optIndex}`}
+                            className="btn btn-sm btn-primary"
+                            onClick={() => {
+                              const next = orderAnswer.filter((_, i) => i !== optIndex);
+                              setAnswers({ ...answers, [question.id]: JSON.stringify(next) });
+                            }}
+                          >
+                            {optIndex + 1}. {opt} ✕
+                          </button>
+                        ))}
+                        {orderAnswer.length === 0 && (
+                          <span className="text-sm text-muted">Click parts above to build the sentence</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {questionType === 'MULTIPLE_CHOICE' && (
+                    <>
+                      {options.map((option, optIndex) => {
+                        const letter = String.fromCharCode(65 + optIndex);
+                        const isSelected = selected === letter;
+                        return (
+                          <label
+                            key={optIndex}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                              border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                              background: isSelected
+                                ? 'rgba(108,92,231,0.1)'
+                                : 'var(--bg-secondary)',
+                              cursor: 'pointer', transition: 'all 0.2s',
+                            }}
+                          >
                             <div style={{
-                              width: 10, height: 10, borderRadius: '50%',
-                              background: 'var(--primary)',
-                            }} />
-                          )}
-                        </div>
-                        <input
-                          type="radio"
-                          name={`question-${question.id}`}
-                          value={letter}
-                          checked={isSelected}
-                          onChange={e => setAnswers({ ...answers, [question.id]: e.target.value })}
-                          style={{ display: 'none' }}
-                        />
-                        <span style={{ fontSize: 14, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                          <strong>{letter}.</strong> {option}
-                        </span>
-                      </label>
-                    );
-                  })}
+                              width: 22, height: 22, borderRadius: '50%',
+                              border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              {isSelected && (
+                                <div style={{
+                                  width: 10, height: 10, borderRadius: '50%',
+                                  background: 'var(--primary)',
+                                }} />
+                              )}
+                            </div>
+                            <input
+                              type="radio"
+                              name={`question-${question.id}`}
+                              value={letter}
+                              checked={isSelected}
+                              onChange={e => setAnswers({ ...answers, [question.id]: e.target.value })}
+                              style={{ display: 'none' }}
+                            />
+                            <span style={{ fontSize: 14, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                              <strong>{letter}.</strong> {option}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
 
                 {question.points > 1 && (

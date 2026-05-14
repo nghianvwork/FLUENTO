@@ -214,6 +214,11 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(testService.getTestsByContent(id)));
     }
 
+    @GetMapping("/tests")
+    public ResponseEntity<ApiResponse<List<ContentTestResponse>>> getActiveTests() {
+        return ResponseEntity.ok(ApiResponse.success(testService.getActiveTests()));
+    }
+
     @GetMapping("/tests/{testId}")
     public ResponseEntity<ApiResponse<ContentTestResponse>> getTest(@PathVariable Long testId) {
         return ResponseEntity.ok(ApiResponse.success(testService.getTestById(testId)));

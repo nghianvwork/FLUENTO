@@ -17,9 +17,13 @@ import ContentPlayer from './pages/content/ContentPlayer';
 import MyVocabulary from './pages/content/MyVocabulary';
 import MyNotes from './pages/content/MyNotes';
 import MyTranslations from './pages/content/MyTranslations';
+import Dictionary from './pages/content/Dictionary';
 import MyTests from './pages/content/MyTests';
 import LearningPath from './pages/content/LearningPath';
 import SpacedRepetition from './pages/content/SpacedRepetition';
+import StructuredLevels from './pages/structured/StructuredLevels';
+import StructuredLessonList from './pages/structured/StructuredLessonList';
+import StructuredLessonPlayer from './pages/structured/StructuredLessonPlayer';
 import RoomList from './pages/speaking/RoomList';
 import SpeakingRoomPage from './pages/speaking/SpeakingRoom';
 import DNAReport from './pages/performance/DNAReport';
@@ -43,6 +47,10 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminModeration from './pages/admin/AdminModeration';
 import AdminSettings from './pages/admin/AdminSettings';
 import Layout from './components/layout/Layout';
+import PersonalizedPlanPage from './pages/personalized/PersonalizedPlan';
+import AiChatbot from './pages/chatbot/AiChatbot';
+import ExamList from './pages/exams/ExamList';
+import ExamDetail from './pages/exams/ExamDetail';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isHydrated } = useAuthStore();
@@ -76,6 +84,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="roleplay" element={<ScenarioList />} />
           <Route path="roleplay/:id" element={<RoleplayChat />} />
+          <Route path="ai-chatbot" element={<AiChatbot />} />
           <Route path="career" element={<CareerSetup />} />
           <Route path="career/:id/vocab" element={<VocabularyMap />} />
           <Route path="career/:id/lesson" element={<DailyLesson />} />
@@ -86,7 +95,14 @@ export default function App() {
           <Route path="content/srs" element={<SpacedRepetition />} />
           <Route path="content/my-notes" element={<MyNotes />} />
           <Route path="content/my-translations" element={<MyTranslations />} />
+          <Route path="dictionary" element={<Dictionary />} />
           <Route path="content/my-tests" element={<MyTests />} />
+          <Route path="levels" element={<StructuredLevels />} />
+          <Route path="levels/:levelCode" element={<StructuredLessonList />} />
+          <Route path="levels/:levelCode/lesson/:lessonId" element={<StructuredLessonPlayer />} />
+          <Route path="exams" element={<ExamList />} />
+          <Route path="exams/:id" element={<ExamDetail />} />
+          <Route path="personalized" element={<PersonalizedPlanPage />} />
           <Route path="admin/content" element={<AdminRoute><AdminContent /></AdminRoute>} />
           <Route path="admin/scenarios" element={<AdminRoute><AdminRoleplay /></AdminRoute>} />
           <Route path="admin/speaking-rooms" element={<AdminRoute><AdminSpeakingRooms /></AdminRoute>} />

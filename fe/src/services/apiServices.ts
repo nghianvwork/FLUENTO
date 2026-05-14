@@ -34,6 +34,8 @@ export const careerApi = {
   getPath: (id: number) => api.get(`/career/paths/${id}`),
   getLessons: (pathId: number) => api.get(`/career/paths/${pathId}/lessons`),
   getVocabulary: (pathId: number) => api.get(`/career/paths/${pathId}/vocabulary`),
+  getVocabularyFiltered: (pathId: number, partOfSpeech?: string) =>
+    api.get(`/career/paths/${pathId}/vocabulary`, { params: partOfSpeech ? { partOfSpeech } : {} }),
   startLesson: (lessonId: number) => api.post(`/career/lessons/${lessonId}/start`),
   completeLesson: (lessonId: number, score: number) =>
     api.post(`/career/lessons/${lessonId}/complete`, { score }),
@@ -42,6 +44,8 @@ export const careerApi = {
   getProgress: () => api.get('/career/progress'),
   seedVocabulary: (id: number) => api.post(`/career/paths/${id}/seed`),
   seedLessons: (id: number) => api.post(`/career/paths/${id}/seed-lessons`),
+  seedDictionary: (id: number) => api.post(`/career/paths/${id}/seed-dictionary`),
+  lookupWord: (word: string) => api.get('/career/dictionary/lookup', { params: { word } }),
 };
 
 export const accentApi = {
@@ -92,6 +96,7 @@ export const contentApi = {
   deleteTranslation: (translationId: number) => api.delete(`/content/translations/${translationId}`),
   
   // Tests
+  getActiveTests: () => api.get('/content/tests'),
   getTests: (contentId: number) => api.get(`/content/${contentId}/tests`),
   getTest: (testId: number) => api.get(`/content/tests/${testId}`),
   submitTest: (testId: number, data: { answers: Record<number, string>; timeSpent: number }) =>
@@ -187,11 +192,27 @@ export const communityApi = {
 
 export const contentAiApi = {
   summary: (data: { contentId: number; focus?: string }) => api.post('/content/ai/summary', data),
+  generateMixedQuiz: (contentId: number) => api.post('/content/ai/generate-mixed-quiz', { contentId }),
+  seedTests: (contentId: number) => api.post('/content/ai/seed-tests', { contentId }),
 };
 
 export const paymentApi = {
   createVnpay: (data: { amount: number; orderInfo?: string; bankCode?: string }) =>
     api.post('/payments/vnpay/create', data),
+};
+
+export const structuredLessonApi = {
+  getLevels: () => api.get('/structured/levels'),
+  getLessonsByLevel: (levelCode: string) => api.get(`/structured/levels/${levelCode}/lessons`),
+  getLessonDetail: (lessonId: number) => api.get(`/structured/lessons/${lessonId}`),
+  startLesson: (lessonId: number) => api.post(`/structured/lessons/${lessonId}/start`),
+  completeLesson: (lessonId: number, score: number) => api.post(`/structured/lessons/${lessonId}/complete`, { score }),
+  seedLevel: (levelCode: string) => api.post(`/structured/levels/${levelCode}/seed`),
+};
+
+export const personalizedApi = {
+  getPlan: () => api.get('/personalized/plan'),
+  generatePlan: (data: { focus?: string; dailyGoalMinutes?: number }) => api.post('/personalized/plan', data),
 };
 
 export const achievementApi = {
@@ -213,4 +234,29 @@ export const notificationApi = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id: number) => api.post(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
+};
+
+export const learningApi = {
+  // Journal
+  getJournal: () => api.get('/learning/journal'),
+  addJournalEntry: (data: { title: string; content: string; category?: string }) =>
+    api.post('/learning/journal', data),
+  deleteJournalEntry: (id: number) => api.delete(`/learning/journal/${id}`),
+
+  // Planner
+  getPlanner: () => api.get('/learning/planner'),
+  addPlanBlock: (data: { title: string; dayOfWeek: string; startTime: string; durationMinutes: number; color?: string }) =>
+    api.post('/learning/planner', data),
+  togglePlanBlock: (id: number) => api.post(`/learning/planner/${id}/toggle`),
+  deletePlanBlock: (id: number) => api.delete(`/learning/planner/${id}`),
+};
+
+export const examApi = {
+  getExams: (type?: string) => api.get('/exams', { params: { type } }),
+  getExam: (id: number) => api.get(`/exams/${id}`),
+  submitAttempt: (id: number, data: { score: number; total: number; timeSpent: number; answersJson: string }) =>
+    api.post(`/exams/${id}/submit`, data),
+  getAttempts: () => api.get('/exams/attempts'),
+  seedExam: (type: string, section?: string, level?: string) =>
+    api.post('/exams/seed', null, { params: { type, section, level } }),
 };

@@ -21,6 +21,10 @@ public class ContentTestQuestion {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String question;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private QuestionType questionType = QuestionType.MULTIPLE_CHOICE;
+
     @Column(columnDefinition = "JSON")
     private String options;
 
@@ -37,4 +41,10 @@ public class ContentTestQuestion {
     @Column(nullable = false)
     @Builder.Default
     private Integer orderIndex = 0;
+
+    public enum QuestionType {
+        MULTIPLE_CHOICE,
+        FILL_BLANK,
+        SENTENCE_ORDER
+    }
 }

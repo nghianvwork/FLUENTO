@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { contentApi } from '../../services/apiServices';
 import { ContentItem } from '../../types';
 import { ArrowLeft, Bookmark, BookmarkCheck, FileText, BookOpen, Brain, CheckCircle, Languages, ClipboardCheck } from 'lucide-react';
@@ -13,6 +13,7 @@ import ContentTest from './ContentTest';
 export default function ContentPlayer() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [content, setContent] = useState<ContentItem | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [activeTab, setActiveTab] = useState<'player' | 'notes' | 'vocab' | 'quiz' | 'translate' | 'test'>('player');
@@ -26,6 +27,17 @@ export default function ContentPlayer() {
       contentApi.getBookmarkStatus(Number(id)).then(res => setIsBookmarked(res.data.data));
     }
   }, [id]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'test') setActiveTab('test');
+    if (tab === 'quiz') setActiveTab('quiz');
+    if (tab === 'notes') setActiveTab('notes');
+    if (tab === 'vocab') setActiveTab('vocab');
+    if (tab === 'translate') setActiveTab('translate');
+    if (tab === 'player') setActiveTab('player');
+  }, [location.search]);
 
   const toggleBookmark = async () => {
     if (!id) return;

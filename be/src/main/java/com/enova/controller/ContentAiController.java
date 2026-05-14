@@ -29,4 +29,18 @@ public class ContentAiController {
         contentAiService.generateQuizzes(contentId);
         return ResponseEntity.ok(ApiResponse.success("Quiz generation started"));
     }
+
+    @PostMapping("/generate-mixed-quiz")
+    public ResponseEntity<ApiResponse<String>> generateMixedQuiz(@RequestBody Map<String, Long> request) {
+        Long contentId = request.get("contentId");
+        contentAiService.generateMixedQuizzes(contentId);
+        return ResponseEntity.ok(ApiResponse.success("Mixed quiz generation started"));
+    }
+
+    @PostMapping("/seed-tests")
+    public ResponseEntity<ApiResponse<String>> seedTests(@RequestBody Map<String, Long> request) {
+        Long contentId = request.get("contentId");
+        contentAiService.seedTests(contentId);
+        return ResponseEntity.ok(ApiResponse.success("Test seeding started"));
+    }
 }

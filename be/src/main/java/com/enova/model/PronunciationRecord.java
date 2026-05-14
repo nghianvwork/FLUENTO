@@ -47,6 +47,9 @@ public class PronunciationRecord {
     @Column(columnDefinition = "TEXT")
     private String aiFeedback;
 
+    @Column(length = 500)
+    private String ttsAudioUrl;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

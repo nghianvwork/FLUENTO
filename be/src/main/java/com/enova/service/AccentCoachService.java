@@ -14,7 +14,8 @@ public class AccentCoachService {
 
     private final PronunciationRecordRepository recordRepository;
     private final UserRepository userRepository;
-    private final GoogleSpeechService speechService;
+    private final OpenAiAudioService audioService;
+    private final OpenAiChatService chatService;
     private final MediaStorageService mediaStorageService;
 
     public PronunciationRecord analyzePronunciation(Long userId, String textPrompt, String audioUrl) {
@@ -22,6 +23,14 @@ public class AccentCoachService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         PronunciationScore score = analyzeWithStt(textPrompt, audioUrl);
+        String feedback = score.feedback;
+        String ttsUrl = null;
+        try {
+            String ttsText = truncate(feedback, 500);
+            ttsUrl = audioService.synthesizeToUrl(ttsText);
+        } catch (Exception ignored) {
+            ttsUrl = null;
+        }
         PronunciationRecord record = PronunciationRecord.builder()
             .user(user)
             .textPrompt(textPrompt)
@@ -31,7 +40,8 @@ public class AccentCoachService {
             .rhythmScore(score.rhythm)
             .stressScore(score.stress)
             .speedWpm(score.speedWpm)
-            .aiFeedback(score.feedback)
+            .aiFeedback(feedback)
+            .ttsAudioUrl(ttsUrl)
             .build();
 
         return recordRepository.save(record);
@@ -41,45 +51,38 @@ public class AccentCoachService {
         return recordRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    private String generateFeedback(String text) {
-        List<String> feedbacks = Arrays.asList(
-            "Good pronunciation overall! Focus on the 'th' sound which is often challenging. Try placing your tongue between your teeth.",
-            "Your intonation is improving! Remember to raise your pitch at the end of questions. The rhythm is natural.",
-            "Nice stress patterns! Work on word-final consonant clusters. Practice saying 'texts', 'sixths' slowly.",
-            "Good pace! Try to link words more naturally. For example, 'an apple' should sound like 'a-napple'.",
-            "Excellent vowel sounds! The 'r' sound could be stronger. Practice with words like 'world', 'girl', 'bird'."
-        );
-        return feedbacks.get(new Random().nextInt(feedbacks.size()));
-    }
-
     private PronunciationScore analyzeWithStt(String textPrompt, String audioUrl) {
         Random random = new Random();
         if (audioUrl == null || audioUrl.isBlank()) {
-            return PronunciationScore.fallback(random, generateFeedback(textPrompt));
+            return PronunciationScore.missingAudio();
         }
 
         try {
             var path = mediaStorageService.resolvePath(audioUrl);
             if (path == null || !path.toFile().exists()) {
-                return PronunciationScore.fallback(random, generateFeedback(textPrompt));
+                return PronunciationScore.missingAudio();
+            }
+            if (path.toFile().length() < 2000) {
+                return PronunciationScore.tooShortAudio();
             }
 
-            var result = speechService.transcribe(path);
+            var result = audioService.transcribe(path);
             String transcript = result.transcript();
             float confidence = result.confidence();
             int similarity = computeSimilarity(textPrompt, transcript);
             int accuracy = Math.min(100, Math.max(40, (int) (similarity * 0.7 + confidence * 100 * 0.3)));
 
+            String feedback = buildAiFeedback(transcript, textPrompt, accuracy);
             return PronunciationScore.builder()
                     .accuracy(accuracy)
                     .intonation(Math.min(100, accuracy - 5 + random.nextInt(10)))
                     .rhythm(Math.min(100, accuracy - 10 + random.nextInt(15)))
                     .stress(Math.min(100, accuracy - 6 + random.nextInt(12)))
                     .speedWpm(90 + random.nextInt(40))
-                    .feedback(buildFeedback(transcript, textPrompt, accuracy))
+                    .feedback(feedback)
                     .build();
         } catch (Exception ex) {
-            return PronunciationScore.fallback(random, generateFeedback(textPrompt));
+            return PronunciationScore.fallback(random, "Nhận diện giọng nói thất bại. Hãy thử bản ghi rõ hơn (wav, mp3, hoặc webm).");
         }
     }
 
@@ -103,11 +106,82 @@ public class AccentCoachService {
 
     private String buildFeedback(String transcript, String prompt, int accuracy) {
         if (transcript == null || transcript.isBlank()) {
-            return "We could not detect clear speech. Try speaking closer to the microphone.";
+            return "Không nhận diện được giọng nói rõ. Hãy nói gần microphone hơn.";
         }
-        if (accuracy >= 85) return "Excellent clarity! Keep the same pace and articulation.";
-        if (accuracy >= 70) return "Good pronunciation. Focus on smoother word linking and intonation.";
-        return "Keep practicing. Slow down slightly and emphasize key syllables.";
+        List<String> expected = normalizeWords(prompt);
+        List<String> actual = normalizeWords(transcript);
+        Set<String> actualSet = new HashSet<>(actual);
+        Set<String> expectedSet = new HashSet<>(expected);
+
+        List<String> missing = new ArrayList<>();
+        for (String word : expected) {
+            if (!actualSet.contains(word)) missing.add(word);
+        }
+
+        List<String> extra = new ArrayList<>();
+        for (String word : actual) {
+            if (!expectedSet.contains(word)) extra.add(word);
+        }
+
+        StringBuilder feedback = new StringBuilder();
+        if (accuracy >= 85) {
+            feedback.append("Phát âm rõ ràng. ");
+        } else if (accuracy >= 70) {
+            feedback.append("Phát âm khá tốt. ");
+        } else {
+            feedback.append("Độ khớp với câu mẫu còn thấp. ");
+        }
+
+        if (!missing.isEmpty()) {
+            feedback.append("Thiếu từ: ").append(String.join(", ", missing.subList(0, Math.min(4, missing.size())))).append(". ");
+        }
+        if (!extra.isEmpty()) {
+            feedback.append("Thừa từ: ").append(String.join(", ", extra.subList(0, Math.min(4, extra.size())))).append(". ");
+        }
+
+        if (accuracy < 70) {
+            feedback.append("Hãy nói chậm hơn và nhấn rõ phụ âm cuối.");
+        } else {
+            feedback.append("Tập nối âm mượt hơn và lên xuống giọng tự nhiên.");
+        }
+
+        return feedback.toString().trim();
+    }
+
+    private String buildAiFeedback(String transcript, String prompt, int accuracy) {
+        List<String> expected = normalizeWords(prompt);
+        List<String> actual = normalizeWords(transcript);
+        List<String> missing = new ArrayList<>();
+        List<String> extra = new ArrayList<>();
+
+        Set<String> actualSet = new HashSet<>(actual);
+        Set<String> expectedSet = new HashSet<>(expected);
+        for (String word : expected) {
+            if (!actualSet.contains(word)) missing.add(word);
+        }
+        for (String word : actual) {
+            if (!expectedSet.contains(word)) extra.add(word);
+        }
+
+        return chatService.generateAccentFeedback(prompt, transcript, accuracy, missing, extra)
+                .orElseGet(() -> buildFeedback(transcript, prompt, accuracy));
+    }
+
+    private List<String> normalizeWords(String text) {
+        if (text == null) return Collections.emptyList();
+        String cleaned = text.toLowerCase().replaceAll("[^a-z0-9\\s']", " ");
+        String[] tokens = cleaned.trim().split("\\s+");
+        List<String> words = new ArrayList<>();
+        for (String token : tokens) {
+            if (!token.isBlank()) words.add(token);
+        }
+        return words;
+    }
+
+    private String truncate(String text, int maxLength) {
+        if (text == null) return "";
+        if (text.length() <= maxLength) return text;
+        return text.substring(0, maxLength - 1).trim() + "…";
     }
 
     private static class PronunciationScore {
@@ -128,6 +202,28 @@ public class AccentCoachService {
                     .feedback(feedback)
                     .build();
         }
+
+            static PronunciationScore missingAudio() {
+                return builder()
+                    .accuracy(0)
+                    .intonation(0)
+                    .rhythm(0)
+                    .stress(0)
+                    .speedWpm(0)
+                    .feedback("Thiếu audio. Vui lòng ghi âm hoặc tải file để nhận phản hồi chi tiết.")
+                    .build();
+            }
+
+            static PronunciationScore tooShortAudio() {
+                return builder()
+                    .accuracy(0)
+                    .intonation(0)
+                    .rhythm(0)
+                    .stress(0)
+                    .speedWpm(0)
+                    .feedback("Audio quá ngắn hoặc quá nhỏ. Hãy nói rõ và ghi âm lâu hơn.")
+                    .build();
+            }
 
         static Builder builder() { return new Builder(); }
 

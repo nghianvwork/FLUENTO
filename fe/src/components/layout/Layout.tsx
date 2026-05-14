@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import {
   LayoutDashboard, MessageSquare, Briefcase, Mic, BookOpen,
   Users, BarChart3, User, LogOut, Sparkles, Trophy, Calendar, Target,
-  Shield, FileText, Flag, Settings, CreditCard, Languages, ClipboardCheck, Bell
+  Shield, FileText, Flag, Settings, CreditCard, BookMarked, ClipboardCheck, Bell
 } from 'lucide-react';
 
 const navSections = [
@@ -14,15 +14,19 @@ const navSections = [
     items: [
       { path: '/app', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/app/roleplay', icon: MessageSquare, label: 'AI Roleplay' },
+      { path: '/app/ai-chatbot', icon: Sparkles, label: 'AI Partner' },
+      { path: '/app/exams', icon: ClipboardCheck, label: 'Luyện thi' },
       { path: '/app/career', icon: Briefcase, label: 'Career English' },
-      { path: '/app/accent', icon: Mic, label: 'Accent Coach' },
+      // { path: '/app/accent', icon: Mic, label: 'Accent Coach' },
       { path: '/app/content', icon: BookOpen, label: 'Content Hub' },
     ],
   },
   {
     title: 'Learning Tools',
     items: [
-      { path: '/app/content/my-translations', icon: Languages, label: 'My Translations' },
+      { path: '/app/dictionary', icon: BookMarked, label: 'Từ Điển' },
+      { path: '/app/levels', icon: BookOpen, label: 'A1–C2 Lessons' },
+      { path: '/app/personalized', icon: Sparkles, label: 'Personalized Path' },
       { path: '/app/content/my-tests', icon: ClipboardCheck, label: 'My Tests' },
     ],
 

@@ -3,16 +3,20 @@ package com.enova.service;
 import com.enova.exception.ResourceNotFoundException;
 import com.enova.model.*;
 import com.enova.repository.*;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CareerEngineService {
 
     private final CareerPathRepository careerPathRepository;
@@ -22,6 +26,7 @@ public class CareerEngineService {
     private final VocabularyProgressRepository vocabProgressRepository;
     private final UserRepository userRepository;
     private final GeminiService geminiService;
+    private final FreeDictionaryService freeDictionaryService;
 
     public List<CareerPath> getAllCareerPaths() {
         return careerPathRepository.findAll();
@@ -38,6 +43,13 @@ public class CareerEngineService {
 
     public List<Vocabulary> getVocabularyByCareerPath(Long careerPathId) {
         return vocabularyRepository.findByCareerPathIdOrderByFrequencyRank(careerPathId);
+    }
+
+    public List<Vocabulary> getVocabularyByPartOfSpeech(Long careerPathId, String partOfSpeech) {
+        if (partOfSpeech == null || partOfSpeech.isBlank() || partOfSpeech.equalsIgnoreCase("all")) {
+            return vocabularyRepository.findByCareerPathIdOrderByFrequencyRank(careerPathId);
+        }
+        return vocabularyRepository.findByCareerPathIdAndPartOfSpeechIgnoreCaseOrderByFrequencyRank(careerPathId, partOfSpeech);
     }
 
     public List<LessonProgress> getUserLessonProgress(Long userId) {
@@ -123,33 +135,132 @@ public class CareerEngineService {
 
         CompletableFuture.runAsync(() -> {
             try {
+                int globalRank = (int) vocabularyRepository.countByCareerPathId(careerPathId);
+
                 // Generate in 5 batches of 100 to get 500 words safely
                 for (int i = 0; i < 5; i++) {
                     com.fasterxml.jackson.databind.JsonNode json = geminiService.generateCareerVocabulary(path.getName(), 100).orElse(null);
                     if (json != null && json.isArray()) {
                         for (com.fasterxml.jackson.databind.JsonNode node : json) {
                             try {
+                                String word = node.path("word").asText("").trim().toLowerCase();
+                                if (word.isEmpty()) continue;
+
+                                String pos = node.path("partOfSpeech").asText("").trim();
+
+                                // Skip duplicates
+                                Optional<Vocabulary> existing = vocabularyRepository
+                                        .findByCareerPathIdAndWordIgnoreCaseAndPartOfSpeechIgnoreCase(
+                                                careerPathId, word, pos.isEmpty() ? "" : pos);
+                                if (existing.isPresent()) continue;
+
                                 Vocabulary vocab = Vocabulary.builder()
                                         .careerPath(path)
-                                        .word(node.path("word").asText())
+                                        .word(word)
                                         .phonetic(node.path("phonetic").asText())
-                                        .partOfSpeech(node.path("partOfSpeech").asText())
+                                        .partOfSpeech(pos)
                                         .definition(node.path("definition").asText())
                                         .meaningVi(node.path("meaningVi").asText())
                                         .exampleSentences(node.path("exampleSentences").toString())
+                                        .source("GEMINI_AI")
                                         .difficulty(Scenario.Difficulty.INTERMEDIATE)
-                                        .frequencyRank(i * 100)
+                                        .frequencyRank(globalRank++)
                                         .build();
                                 vocabularyRepository.save(vocab);
                             } catch (Exception e) {
-                                // Skip individual failures
+                                log.error("Error saving vocab word: {}", e.getMessage());
                             }
                         }
                     }
                     Thread.sleep(2000); // Wait between batches to respect rate limits
                 }
+
+                // Update career path vocabulary count
+                long totalCount = vocabularyRepository.countByCareerPathId(careerPathId);
+                path.setVocabularyCount((int) totalCount);
+                careerPathRepository.save(path);
+                log.info("AI seed complete for '{}': total vocab = {}", path.getName(), totalCount);
+
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("AI seed failed for path {}: {}", careerPathId, e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Seed vocabulary from Free Dictionary API.
+     * 1. Use Gemini to generate a word list for the career path
+     * 2. For each word, call Free Dictionary API for detailed info
+     * 3. Each part of speech becomes a separate Vocabulary record
+     */
+    public void seedFromDictionaryAsync(Long careerPathId) {
+        CareerPath path = careerPathRepository.findById(careerPathId)
+                .orElseThrow(() -> new ResourceNotFoundException("Career path not found"));
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("Starting dictionary seed for career path: {}", path.getName());
+
+                // Use Gemini to generate word list with Vietnamese meanings
+                Optional<JsonNode> wordsJson = geminiService.generateWordListForDictionary(path.getName(), 200);
+                if (wordsJson.isEmpty()) {
+                    log.warn("Gemini returned empty word list for: {}", path.getName());
+                    return;
+                }
+
+                JsonNode wordArray = wordsJson.get();
+                if (!wordArray.isArray()) {
+                    log.warn("Expected JSON array from Gemini, got: {}", wordArray.getNodeType());
+                    return;
+                }
+
+                int savedCount = 0;
+                int skippedCount = 0;
+
+                for (JsonNode wordNode : wordArray) {
+                    try {
+                        String word = wordNode.path("word").asText("").trim().toLowerCase();
+                        String meaningVi = wordNode.path("meaningVi").asText("");
+
+                        if (word.isEmpty()) continue;
+
+                        // Call Free Dictionary API
+                        List<Vocabulary> vocabs = freeDictionaryService.lookupAndCreateVocabularies(word, path, meaningVi);
+
+                        for (Vocabulary vocab : vocabs) {
+                            // Check for duplicates
+                            Optional<Vocabulary> existing = vocabularyRepository
+                                    .findByCareerPathIdAndWordIgnoreCaseAndPartOfSpeechIgnoreCase(
+                                            careerPathId, vocab.getWord(),
+                                            vocab.getPartOfSpeech() != null ? vocab.getPartOfSpeech() : "");
+
+                            if (existing.isPresent()) {
+                                skippedCount++;
+                                continue;
+                            }
+
+                            vocab.setFrequencyRank(savedCount);
+                            vocabularyRepository.save(vocab);
+                            savedCount++;
+                        }
+
+                        // Rate limit: 450ms delay between API calls
+                        Thread.sleep(450);
+
+                    } catch (Exception e) {
+                        log.error("Error processing word: {}", e.getMessage());
+                    }
+                }
+
+                // Update career path vocabulary count
+                long totalCount = vocabularyRepository.countByCareerPathId(careerPathId);
+                path.setVocabularyCount((int) totalCount);
+                careerPathRepository.save(path);
+
+                log.info("Dictionary seed complete for '{}': saved={}, skipped={}", path.getName(), savedCount, skippedCount);
+
+            } catch (Exception e) {
+                log.error("Dictionary seed failed for career path {}: {}", careerPathId, e.getMessage(), e);
             }
         });
     }

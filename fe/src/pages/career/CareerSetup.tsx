@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { careerApi } from '../../services/apiServices';
 import { CareerPath } from '../../types';
-import { Clock, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { Clock, BookOpen, ArrowRight, Sparkles, BookMarked } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -15,16 +15,16 @@ export default function CareerSetup() {
   useEffect(() => {
     careerApi.getPaths().then(res => setPaths(res.data.data)).catch(() => {
       setPaths([
-        { id: 1, name: 'Information Technology', description: 'Master English for software development and IT', icon: '💻', estimatedWeeks: 12, vocabulary_count: 500 },
-        { id: 2, name: 'Marketing & Advertising', description: 'Learn marketing terminology for digital campaigns', icon: '📊', estimatedWeeks: 10, vocabulary_count: 400 },
-        { id: 3, name: 'Finance & Banking', description: 'Financial English for banking and investment', icon: '💰', estimatedWeeks: 14, vocabulary_count: 550 },
-        { id: 4, name: 'Healthcare & Medicine', description: 'Medical English for healthcare professionals', icon: '🏥', estimatedWeeks: 16, vocabulary_count: 600 },
-        { id: 5, name: 'Education & Teaching', description: 'Academic English for educators', icon: '📚', estimatedWeeks: 8, vocabulary_count: 350 },
-        { id: 6, name: 'Hospitality & Tourism', description: 'Service English for hospitality industry', icon: '✈️', estimatedWeeks: 8, vocabulary_count: 300 },
-        { id: 7, name: 'Legal & Law', description: 'Legal English for law professionals', icon: '⚖️', estimatedWeeks: 14, vocabulary_count: 500 },
-        { id: 8, name: 'Engineering', description: 'Technical English for engineers', icon: '🔧', estimatedWeeks: 12, vocabulary_count: 450 },
-        { id: 9, name: 'Human Resources', description: 'HR English for recruitment and training', icon: '👥', estimatedWeeks: 10, vocabulary_count: 350 },
-        { id: 10, name: 'E-commerce & Retail', description: 'Business English for online selling', icon: '🛒', estimatedWeeks: 8, vocabulary_count: 300 },
+        { id: 1, name: 'Information Technology', description: 'Master English for software development and IT', icon: '💻', estimatedWeeks: 12, vocabularyCount: 500 },
+        { id: 2, name: 'Marketing & Advertising', description: 'Learn marketing terminology for digital campaigns', icon: '📊', estimatedWeeks: 10, vocabularyCount: 400 },
+        { id: 3, name: 'Finance & Banking', description: 'Financial English for banking and investment', icon: '💰', estimatedWeeks: 14, vocabularyCount: 550 },
+        { id: 4, name: 'Healthcare & Medicine', description: 'Medical English for healthcare professionals', icon: '🏥', estimatedWeeks: 16, vocabularyCount: 600 },
+        { id: 5, name: 'Education & Teaching', description: 'Academic English for educators', icon: '📚', estimatedWeeks: 8, vocabularyCount: 350 },
+        { id: 6, name: 'Hospitality & Tourism', description: 'Service English for hospitality industry', icon: '✈️', estimatedWeeks: 8, vocabularyCount: 300 },
+        { id: 7, name: 'Legal & Law', description: 'Legal English for law professionals', icon: '⚖️', estimatedWeeks: 14, vocabularyCount: 500 },
+        { id: 8, name: 'Engineering', description: 'Technical English for engineers', icon: '🔧', estimatedWeeks: 12, vocabularyCount: 450 },
+        { id: 9, name: 'Human Resources', description: 'HR English for recruitment and training', icon: '👥', estimatedWeeks: 10, vocabularyCount: 350 },
+        { id: 10, name: 'E-commerce & Retail', description: 'Business English for online selling', icon: '🛒', estimatedWeeks: 8, vocabularyCount: 300 },
       ]);
     });
   }, []);
@@ -49,6 +49,16 @@ export default function CareerSetup() {
     }
   };
 
+  const handleSeedDictionary = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    try {
+      await careerApi.seedDictionary(id);
+      toast.success('📖 Đang tạo nhiều từ vựng có audio/phonetics/synonyms. Quay lại sau 2-3 phút!', { duration: 6000 });
+    } catch (err) {
+      toast.error('Không thể khởi tạo từ điển. Vui lòng kiểm tra kết nối.');
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -69,7 +79,15 @@ export default function CareerSetup() {
                   onClick={(e) => handleSeed(e, path.id)}
                   title="Seed AI Vocabulary"
                 >
-                  <Sparkles size={10} /> Vocab
+                  <Sparkles size={10} /> AI
+                </button>
+                <button 
+                  className="btn btn-sm" 
+                  style={{ background: 'rgba(0, 206, 209, 0.1)', color: 'var(--accent-cyan)', border: '1px solid var(--border)', fontSize: '10px', padding: '4px 8px' }}
+                  onClick={(e) => handleSeedDictionary(e, path.id)}
+                  title="Nhiều từ vựng + audio/phonetics/synonyms (seed-dictionary)"
+                >
+                  <BookMarked size={10} /> Dict
                 </button>
                 <button 
                   className="btn btn-sm" 

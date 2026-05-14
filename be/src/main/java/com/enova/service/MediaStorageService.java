@@ -46,6 +46,24 @@ public class MediaStorageService {
                 .build();
     }
 
+    public MediaUploadResponse storeBytes(byte[] data, String filename, String contentType) throws IOException {
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Empty data");
+        }
+        Path dir = Paths.get(uploadDir);
+        Files.createDirectories(dir);
+
+        Path path = dir.resolve(filename);
+        Files.write(path, data);
+
+        return MediaUploadResponse.builder()
+                .url("/media/" + filename)
+                .filename(filename)
+                .contentType(contentType)
+                .sizeBytes((long) data.length)
+                .build();
+    }
+
     public Path resolvePath(String url) {
         if (url == null) return null;
         String cleaned = url.replace("/media/", "");

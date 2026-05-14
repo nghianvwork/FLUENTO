@@ -16,6 +16,7 @@ import java.util.List;
 public class ContentTestResponse {
     private Long id;
     private Long contentId;
+    private String contentTitle;
     private String title;
     private String description;
     private String type;
@@ -28,6 +29,7 @@ public class ContentTestResponse {
         return ContentTestResponse.builder()
                 .id(test.getId())
                 .contentId(test.getContent().getId())
+                .contentTitle(test.getContent().getTitle())
                 .title(test.getTitle())
                 .description(test.getDescription())
                 .type(test.getType().name())

@@ -87,8 +87,16 @@ export interface Vocabulary {
   id: number;
   word: string;
   definition: string;
-  pronunciationIpa: string;
+  phonetic?: string;
+  pronunciationIpa?: string;
+  partOfSpeech?: string;
+  meaningVi?: string;
   exampleSentences: string;
+  exampleSentence?: string;
+  audioUrl?: string;
+  synonyms?: string;
+  antonyms?: string;
+  source?: string;
   difficulty: string;
   frequencyRank: number;
 }
@@ -102,6 +110,43 @@ export interface Lesson {
   estimatedMinutes: number;
 }
 
+export interface StructuredLevel {
+  code: string;
+  title: string;
+  description: string;
+  orderIndex: number;
+  totalLessons: number;
+  completedLessons: number;
+}
+
+export interface StructuredLesson {
+  id: number;
+  levelCode: string;
+  title: string;
+  description?: string;
+  lessonType: string;
+  orderIndex: number;
+  estimatedMinutes: number;
+  contentJson?: string;
+  status?: string;
+  score?: number;
+  completedBlocks?: number;
+  totalBlocks?: number;
+  createdAt?: string;
+}
+
+export interface PersonalizedPlan {
+  id: number;
+  title: string;
+  summary?: string;
+  cefrLevel: string;
+  targetLevel: string;
+  dailyGoalMinutes: number;
+  planJson?: string;
+  isActive: boolean;
+  createdAt?: string;
+}
+
 export interface PronunciationRecord {
   id: number;
   textPrompt: string;
@@ -111,6 +156,8 @@ export interface PronunciationRecord {
   stressScore: number;
   speedWpm: number;
   aiFeedback: string;
+  ttsAudioUrl?: string;
+  audioUrl?: string;
   createdAt: string;
 }
 

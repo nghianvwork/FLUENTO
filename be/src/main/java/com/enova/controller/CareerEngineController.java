@@ -3,7 +3,9 @@ package com.enova.controller;
 import com.enova.dto.response.ApiResponse;
 import com.enova.model.*;
 import com.enova.service.CareerEngineService;
+import com.enova.service.FreeDictionaryService;
 import com.enova.service.UserService;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/career")
@@ -19,6 +22,7 @@ import java.util.Map;
 public class CareerEngineController {
     private final CareerEngineService careerEngineService;
     private final UserService userService;
+    private final FreeDictionaryService freeDictionaryService;
 
     @GetMapping("/paths")
     public ResponseEntity<ApiResponse<List<CareerPath>>> getAllPaths() {
@@ -36,8 +40,10 @@ public class CareerEngineController {
     }
 
     @GetMapping("/paths/{id}/vocabulary")
-    public ResponseEntity<ApiResponse<List<Vocabulary>>> getVocabulary(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(careerEngineService.getVocabularyByCareerPath(id)));
+    public ResponseEntity<ApiResponse<List<Vocabulary>>> getVocabulary(
+            @PathVariable Long id,
+            @RequestParam(required = false) String partOfSpeech) {
+        return ResponseEntity.ok(ApiResponse.success(careerEngineService.getVocabularyByPartOfSpeech(id, partOfSpeech)));
     }
 
     @PostMapping("/paths/{id}/seed")
@@ -50,6 +56,21 @@ public class CareerEngineController {
     public ResponseEntity<ApiResponse<String>> seedLessons(@PathVariable Long id) {
         careerEngineService.seedLessonsForPathAsync(id);
         return ResponseEntity.ok(ApiResponse.success("Lesson seeding started in background."));
+    }
+
+    @PostMapping("/paths/{id}/seed-dictionary")
+    public ResponseEntity<ApiResponse<String>> seedDictionary(@PathVariable Long id) {
+        careerEngineService.seedFromDictionaryAsync(id);
+        return ResponseEntity.ok(ApiResponse.success("Dictionary seeding started. Words will be enriched with phonetics, audio, synonyms & antonyms from Free Dictionary API."));
+    }
+
+    @GetMapping("/dictionary/lookup")
+    public ResponseEntity<ApiResponse<Object>> lookupWord(@RequestParam String word) {
+        Optional<JsonNode> result = freeDictionaryService.lookupWordFull(word.trim());
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(Map.of("found", false, "word", word)));
+        }
+        return ResponseEntity.ok(ApiResponse.success(result.get()));
     }
 
     @PostMapping("/lessons/{lessonId}/start")

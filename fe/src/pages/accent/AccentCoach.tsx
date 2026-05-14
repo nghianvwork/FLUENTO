@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { accentApi, mediaApi } from '../../services/apiServices';
 import { PronunciationRecord } from '../../types';
 import { Mic, MicOff, BarChart3 } from 'lucide-react';
@@ -18,28 +18,86 @@ export default function AccentCoach() {
   const [result, setResult] = useState<PronunciationRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleAnalyze = async () => {
+  useEffect(() => {
+    if (!result?.ttsAudioUrl) return;
+    if (ttsAudioRef.current) ttsAudioRef.current.pause();
+    const audio = new Audio(result.ttsAudioUrl);
+    ttsAudioRef.current = audio;
+    audio.play().catch(() => toast.error('Không phát được audio TTS'));
+  }, [result?.ttsAudioUrl]);
+
+  const cleanupRecording = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        const file = new File([blob], `recording-${Date.now()}.webm`, { type: blob.type });
+        setAudioFile(file);
+        cleanupRecording();
+        handleAnalyze(file);
+      };
+
+      recorder.start();
+      setRecording(true);
+    } catch {
+      cleanupRecording();
+      setRecording(false);
+      toast.error('Không thể truy cập microphone.');
+    }
+  };
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+    setRecording(false);
+  };
+
+  const handleAnalyze = async (fileOverride?: File) => {
     setLoading(true);
     try {
       let audioUrl: string | undefined;
-      if (audioFile) {
-        const upload = await mediaApi.upload(audioFile);
+      const fileToUpload = fileOverride || audioFile;
+      if (fileToUpload) {
+        const upload = await mediaApi.upload(fileToUpload);
         audioUrl = upload.data.data.url;
       }
       const res = await accentApi.analyze(text, audioUrl);
       setResult(res.data.data);
-    } catch {
-      setResult({
-        id: 1, textPrompt: text, accuracyScore: 72 + Math.floor(Math.random() * 20),
-        intonationScore: 65 + Math.floor(Math.random() * 25), rhythmScore: 60 + Math.floor(Math.random() * 30),
-        stressScore: 68 + Math.floor(Math.random() * 22), speedWpm: 120 + Math.floor(Math.random() * 40),
-        aiFeedback: "Good pronunciation overall! Focus on the 'th' sound. Try placing your tongue between your teeth for words like 'the' and 'that'.",
-        createdAt: new Date().toISOString()
-      });
+      toast.success('Phân tích hoàn tất!');
+    } catch (err: any) {
+      setResult(null);
+      const message = err?.response?.data?.message || err?.response?.data?.error || 'Phân tích thất bại. Vui lòng thử lại.';
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    toast.success('Phân tích hoàn tất!');
   };
 
   const ScoreBar = ({ label, score, color }: { label: string; score: number; color: string }) => (
@@ -82,10 +140,16 @@ export default function AccentCoach() {
           </div>
           <div className="flex gap-12 justify-center">
             <button className={`btn ${recording ? 'btn-accent' : 'btn-primary'} btn-lg`}
-              onClick={() => { setRecording(!recording); if (recording) handleAnalyze(); }}>
+              onClick={() => { recording ? stopRecording() : startRecording(); }}>
               {recording ? <><MicOff size={20} /> Dừng ghi âm</> : <><Mic size={20} /> Ghi âm & Phân tích</>}
             </button>
-            <button className="btn btn-secondary btn-lg" onClick={handleAnalyze} disabled={loading}>
+            <button className="btn btn-secondary btn-lg" onClick={() => {
+              if (!audioFile) {
+                toast.error('Vui lòng tải audio hoặc ghi âm trước.');
+                return;
+              }
+              handleAnalyze();
+            }} disabled={loading}>
               Phân tích từ file
             </button>
           </div>

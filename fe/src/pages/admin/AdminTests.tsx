@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { adminApi, contentApi } from '../../services/apiServices';
+import { adminApi, contentAiApi } from '../../services/apiServices';
 import { AdminContentItem } from '../../types';
 import { Archive, Filter, Plus, Pencil, Trash2, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import Modal from '../../components/common/Modal';
 interface TestQuestion {
   id?: number;
   question: string;
+  questionType?: 'MULTIPLE_CHOICE' | 'FILL_BLANK' | 'SENTENCE_ORDER';
   options: string;
   correctAnswer: string;
   explanation: string;
@@ -34,6 +35,8 @@ export default function AdminTests() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ContentTest | null>(null);
   const [editTarget, setEditTarget] = useState<ContentTest | null>(null);
+  const [seedContentId, setSeedContentId] = useState<number>(0);
+  const [seeding, setSeeding] = useState(false);
   
   const [form, setForm] = useState<Partial<ContentTest>>({
     title: '',
@@ -58,9 +61,28 @@ export default function AdminTests() {
       ]);
       setTests(testsRes.data.data || []);
       setContents(contentsRes.data.data || []);
+      if (!seedContentId && contentsRes.data.data?.length) {
+        setSeedContentId(contentsRes.data.data[0].id);
+      }
     } catch (error) {
       console.error('Failed to load tests', error);
       toast.error('Failed to load test data');
+    }
+  };
+
+  const handleSeedTests = async () => {
+    if (!seedContentId) {
+      toast.error('Please select content');
+      return;
+    }
+    setSeeding(true);
+    try {
+      await contentAiApi.seedTests(seedContentId);
+      toast.success('AI test seeding started. Refresh in 1-2 minutes.');
+    } catch (e) {
+      toast.error('Failed to seed tests');
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -93,6 +115,7 @@ export default function AdminTests() {
         ...(prev.questions || []),
         {
           question: '',
+          questionType: 'MULTIPLE_CHOICE',
           options: '{"A":"", "B":"", "C":"", "D":""}',
           correctAnswer: 'A',
           explanation: '',
@@ -181,6 +204,7 @@ export default function AdminTests() {
           <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
             <option value="MULTIPLE_CHOICE">Multiple Choice</option>
             <option value="TRUE_FALSE">True/False</option>
+            <option value="FILL_IN_BLANK">Fill in the Blank</option>
             <option value="MIXED">Mixed</option>
           </select>
         </div>
@@ -218,18 +242,39 @@ export default function AdminTests() {
                 <button className="icon-button" onClick={() => handleRemoveQuestion(idx)}><Trash2 size={14} style={{ color: 'var(--accent-red)' }} /></button>
               </div>
               <input className="input" style={{ marginBottom: 12 }} placeholder="Question text" value={q.question} onChange={e => handleUpdateQuestion(idx, 'question', e.target.value)} />
-              
-              <textarea className="input" style={{ marginBottom: 12, height: 80, fontFamily: 'monospace', fontSize: 12 }} placeholder='{"A":"Option 1", "B":"Option 2"}' value={q.options} onChange={e => handleUpdateQuestion(idx, 'options', e.target.value)} />
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label className="input-label" style={{ fontSize: 12 }}>Correct Answer (A, B, C, D)</label>
-                  <input className="input" value={q.correctAnswer} onChange={e => handleUpdateQuestion(idx, 'correctAnswer', e.target.value)} />
+                  <label className="input-label" style={{ fontSize: 12 }}>Question Type</label>
+                  <select className="input" value={q.questionType || 'MULTIPLE_CHOICE'} onChange={e => handleUpdateQuestion(idx, 'questionType', e.target.value)}>
+                    <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+                    <option value="FILL_BLANK">Fill in the Blank</option>
+                    <option value="SENTENCE_ORDER">Sentence Ordering</option>
+                  </select>
                 </div>
                 <div>
                   <label className="input-label" style={{ fontSize: 12 }}>Points</label>
                   <input type="number" className="input" value={q.points} onChange={e => handleUpdateQuestion(idx, 'points', Number(e.target.value))} />
                 </div>
+              </div>
+
+              <textarea
+                className="input"
+                style={{ marginBottom: 12, height: 80, fontFamily: 'monospace', fontSize: 12 }}
+                placeholder={q.questionType === 'SENTENCE_ORDER'
+                  ? '["I", "am", "learning", "English"]'
+                  : q.questionType === 'FILL_BLANK'
+                  ? '["option 1", "option 2"] (optional)'
+                  : '{"A":"Option 1", "B":"Option 2", "C":"Option 3", "D":"Option 4"}'}
+                value={q.options}
+                onChange={e => handleUpdateQuestion(idx, 'options', e.target.value)}
+              />
+              
+              <div style={{ marginBottom: 12 }}>
+                <label className="input-label" style={{ fontSize: 12 }}>
+                  Correct Answer {q.questionType === 'SENTENCE_ORDER' ? '(JSON array)' : q.questionType === 'FILL_BLANK' ? '(text)' : '(A, B, C, D)'}
+                </label>
+                <input className="input" value={q.correctAnswer} onChange={e => handleUpdateQuestion(idx, 'correctAnswer', e.target.value)} />
               </div>
 
               <div>
@@ -262,6 +307,15 @@ export default function AdminTests() {
             <span style={{ color: 'var(--text-muted)' }}>{tests.length} Total Tests</span>
           </div>
           <div className="flex gap-8">
+            <select className="input" style={{ height: 36 }} value={seedContentId} onChange={(e) => setSeedContentId(Number(e.target.value))}>
+              <option value={0}>Select Content</option>
+              {contents.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+            <button className="btn btn-secondary" onClick={handleSeedTests} disabled={seeding || !seedContentId}>
+              {seeding ? 'Seeding...' : 'Seed Tests (AI)'}
+            </button>
             <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> New Test</button>
           </div>
         </div>
